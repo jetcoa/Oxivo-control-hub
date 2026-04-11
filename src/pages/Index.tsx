@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { DashboardDataProvider } from "@/context/DashboardDataContext";
 import { motion, AnimatePresence } from "framer-motion";
 import Header from "@/components/Header";
 import CommandDeck from "@/components/tabs/CommandDeck";
@@ -23,7 +24,7 @@ const Index = () => {
   const [activeTab, setActiveTab] = useState("deck");
 
   return (
-    <div className="min-h-screen bg-background px-4 py-6 md:px-8 lg:px-12">
+    <DashboardDataProvider><div className="min-h-screen bg-background px-4 py-6 md:px-8 lg:px-12">
       <div className="mx-auto max-w-7xl">
         <Header />
         <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -48,7 +49,7 @@ const Index = () => {
           </AnimatePresence>
         </Tabs>
       </div>
-    </div>
+    </div></DashboardDataProvider>
   );
 };
 

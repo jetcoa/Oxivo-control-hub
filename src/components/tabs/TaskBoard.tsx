@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { agents, type TaskItem } from "@/data/mockData";
+import { useDashboard } from "@/context/DashboardDataContext";
 import { tasks as initialTasks } from "@/data/mockData";
 import { Badge } from "@/components/ui/badge";
 
@@ -14,7 +15,9 @@ const columns = [
 const priorityDot: Record<string, string> = { low: "bg-muted-foreground/50", medium: "bg-amber", high: "bg-primary", urgent: "bg-destructive" };
 
 const TaskBoard = () => {
+  const { agents, tasks: liveTasks } = useDashboard();
   const [tasks, setTasks] = useState<TaskItem[]>(initialTasks);
+  useEffect(() => { if (liveTasks?.length) setTasks(liveTasks); }, [liveTasks]);
   const [dragging, setDragging] = useState<string | null>(null);
 
   const handleDragStart = (id: string) => setDragging(id);
@@ -39,7 +42,12 @@ const TaskBoard = () => {
           </div>
           <div className="space-y-2.5">
             {tasks.filter((t) => t.column === col.key).map((t) => {
-              const agent = agents.find((a) => a.id === t.agentId)!;
+              const agent = agents.find((a) => a.id === t.agentId) ?? {
+                id: t.agentId,
+                name: t.agentId || 'Unknown agent',
+                emoji: '🤖',
+              };
+
               return (
                 <motion.div
                   key={t.id}
@@ -51,7 +59,7 @@ const TaskBoard = () => {
                   <p className="text-sm font-medium mb-2">{t.title}</p>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1.5">
-                      <span className="text-sm">{agent.emoji}</span>
+                      <span className="text-sm">{agent.emoji || '🤖'}</span>
                       <span className="text-xs text-muted-foreground">{agent.name}</span>
                     </div>
                     <div className="flex items-center gap-2">

@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import { agents } from "@/data/mockData";
+import { useDashboard } from "@/context/DashboardDataContext";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
@@ -7,7 +8,9 @@ const statusColors: Record<string, string> = { active: "bg-primary", idle: "bg-a
 const item = { hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0 } };
 const container = { hidden: {}, show: { transition: { staggerChildren: 0.08 } } };
 
-const AgentProfiles = () => (
+const AgentProfiles = () => {
+  const { agents } = useDashboard();
+  return (
   <motion.div variants={container} initial="hidden" animate="show" className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
     {agents.map((a) => (
       <motion.div
@@ -44,6 +47,7 @@ const AgentProfiles = () => (
       </motion.div>
     ))}
   </motion.div>
-);
+  );
+};
 
 export default AgentProfiles;

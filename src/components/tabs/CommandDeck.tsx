@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { CheckCircle, Users, Target, ArrowRightLeft } from "lucide-react";
 import { agents, activityFeed, metricCards } from "@/data/mockData";
+import { useDashboard } from "@/context/DashboardDataContext";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import CountUp from "@/components/CountUp";
 
@@ -10,7 +11,16 @@ const statusColors: Record<string, string> = { active: "bg-primary", idle: "bg-a
 const item = { hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0 } };
 const container = { hidden: {}, show: { transition: { staggerChildren: 0.07 } } };
 
-const CommandDeck = () => (
+const CommandDeck = () => {
+  const { agents, logs, live } = useDashboard();
+  const activityFeed = logs.slice(0, 8).map((l) => ({ id: l.id, agentId: l.agentId, action: l.message, timestamp: l.timestamp }));
+  const metricCards = [
+    { label: "Tasks", value: 0, trend: live ? "live" : "mock", icon: "CheckCircle" as const },
+    { label: "Active Agents", value: agents.filter((a) => a.status === "active").length, trend: `${agents.length} total`, icon: "Users" as const },
+    { label: "Avg Accuracy", value: agents.length ? agents.reduce((n,a)=>n+a.accuracy,0)/agents.length : 0, trend: live ? "Supabase" : "mock", icon: "Target" as const, suffix: "%" },
+    { label: "Logs", value: logs.length, trend: live ? "live" : "mock", icon: "ArrowRightLeft" as const },
+  ];
+  return (
   <motion.div variants={container} initial="hidden" animate="show" className="space-y-6">
     {/* Metric Cards */}
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -75,6 +85,7 @@ const CommandDeck = () => (
       </motion.div>
     </div>
   </motion.div>
-);
+  );
+};
 
 export default CommandDeck;

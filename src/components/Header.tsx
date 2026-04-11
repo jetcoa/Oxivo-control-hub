@@ -1,7 +1,7 @@
 import { Settings, Moon, Sun } from "lucide-react";
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
-import logo from "@/assets/oxivo-logo.png";
+import logo from "@/assets/axivo-logo.png";
 
 const Header = () => {
   const [dark, setDark] = useState(() => {
