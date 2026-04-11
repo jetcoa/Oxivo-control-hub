@@ -14,11 +14,10 @@ export interface Agent {
 }
 
 export const agents: Agent[] = [
-  { id: "hormozi", name: "Hormozi", emoji: "⚡", type: "CEO", role: "Decisions + Priorities + Revenue Moves", accentColor: "#fb7185", status: "active", currentActivity: "Reviewing Q2 revenue strategy", lastSeen: "just now", tasksCompleted: 142, accuracy: 96, skills: ["Revenue Strategy", "Prioritization", "Decision Making", "Market Analysis"] },
-  { id: "shotwell", name: "Shotwell", emoji: "🧭", type: "COO", role: "Sequencing + Ops Control + Blocker Removal", accentColor: "#f59e0b", status: "active", currentActivity: "Unblocking pipeline bottleneck", lastSeen: "2m ago", tasksCompleted: 203, accuracy: 94, skills: ["Operations", "Process Design", "Blocker Removal", "Sequencing"] },
-  { id: "andrej", name: "Andrej", emoji: "🧠", type: "AI Systems", role: "Workflow Diagnosis + Prompt/Agent Design", accentColor: "#8b5cf6", status: "idle", currentActivity: "Awaiting next workflow audit", lastSeen: "15m ago", tasksCompleted: 87, accuracy: 99, skills: ["Prompt Engineering", "Agent Design", "Workflow Optimization", "Diagnostics"] },
-  { id: "clief", name: "Clief", emoji: "🛰️", type: "Relay", role: "Implementation Relay + Task Routing", accentColor: "#38bdf8", status: "active", currentActivity: "Routing tasks to Van", lastSeen: "just now", tasksCompleted: 318, accuracy: 97, skills: ["Task Routing", "Communication", "Relay Coordination", "Status Tracking"] },
-  { id: "van", name: "Van", emoji: "🛠️", type: "Builder", role: "Execution Builder (Supabase + n8n)", accentColor: "#a3e635", status: "idle", currentActivity: "Standing by for build tasks", lastSeen: "8m ago", tasksCompleted: 156, accuracy: 92, skills: ["Supabase", "n8n Workflows", "API Integration", "Database Design"] },
+  { id: "hormozi", name: "Hormozi", emoji: "⚡", type: "CEO", role: "Front door + Decisions + Final reporting", accentColor: "#fb7185", status: "active", currentActivity: "Reviewing Q2 revenue strategy", lastSeen: "just now", tasksCompleted: 142, accuracy: 96, skills: ["Revenue Strategy", "Prioritization", "Decision Making", "Market Analysis"] },
+  { id: "shotwell", name: "Shotwell", emoji: "🧭", type: "COO", role: "Breakdown + Sequencing + Verification", accentColor: "#f59e0b", status: "active", currentActivity: "Unblocking pipeline bottleneck", lastSeen: "2m ago", tasksCompleted: 203, accuracy: 94, skills: ["Operations", "Process Design", "Blocker Removal", "Sequencing"] },
+  { id: "andrej", name: "Andrej", emoji: "🧠", type: "Builder", role: "Implementation and build execution", accentColor: "#8b5cf6", status: "idle", currentActivity: "Awaiting next workflow audit", lastSeen: "15m ago", tasksCompleted: 87, accuracy: 99, skills: ["Prompt Engineering", "Agent Design", "Workflow Optimization", "Diagnostics"] },
+  { id: "van", name: "Van", emoji: "🛠️", type: "Builder", role: "Implementation and build execution", accentColor: "#a3e635", status: "idle", currentActivity: "Standing by for build tasks", lastSeen: "8m ago", tasksCompleted: 156, accuracy: 92, skills: ["Supabase", "n8n Workflows", "API Integration", "Database Design"] },
 ];
 
 export interface TaskItem {
@@ -36,10 +35,8 @@ export const tasks: TaskItem[] = [
   { id: "t3", title: "Build Supabase edge function for leads", agentId: "van", priority: "high", progress: 65, column: "doing" },
   { id: "t4", title: "Refactor prompt chain for sales agent", agentId: "andrej", priority: "urgent", progress: 30, column: "doing" },
   { id: "t5", title: "Review Q2 OKR alignment", agentId: "shotwell", priority: "medium", column: "needs-input" },
-  { id: "t6", title: "Clarify API rate limit policy", agentId: "clief", priority: "low", column: "needs-input" },
   { id: "t7", title: "Deploy CRM integration pipeline", agentId: "van", priority: "high", column: "done" },
   { id: "t8", title: "Write investor update draft", agentId: "hormozi", priority: "urgent", column: "done" },
-  { id: "t9", title: "Set up monitoring alerts", agentId: "clief", priority: "medium", column: "todo" },
   { id: "t10", title: "Optimize database query performance", agentId: "van", priority: "high", progress: 80, column: "doing" },
 ];
 
@@ -55,12 +52,10 @@ export const logEntries: LogEntry[] = [
   { id: "l1", agentId: "hormozi", category: "observation", message: "Revenue pipeline shows 23% increase in qualified leads this week. Recommend doubling down on outbound.", timestamp: "2026-04-01T09:30:00Z" },
   { id: "l2", agentId: "andrej", category: "fyi", message: "GPT-4o latency spiked 40% at 2am UTC. Switched fallback to Claude 3.5 Sonnet. No user impact.", timestamp: "2026-04-01T09:15:00Z" },
   { id: "l3", agentId: "shotwell", category: "reminder", message: "Sprint retro is scheduled for Friday 3pm. Action items from last retro still pending review.", timestamp: "2026-04-01T08:45:00Z" },
-  { id: "l4", agentId: "clief", category: "general", message: "Routed 14 tasks today. 3 escalated to Hormozi for priority decisions.", timestamp: "2026-04-01T08:30:00Z" },
   { id: "l5", agentId: "van", category: "observation", message: "Supabase RLS policies on 'leads' table need tightening. Found 2 overly permissive rules.", timestamp: "2026-04-01T08:00:00Z" },
   { id: "l6", agentId: "hormozi", category: "fyi", message: "Competitor X launched a new pricing tier. Our positioning still holds — no action needed yet.", timestamp: "2026-03-31T18:00:00Z" },
   { id: "l7", agentId: "andrej", category: "reminder", message: "Prompt version 3.2 rollout due tomorrow. Final QA pass required before deploy.", timestamp: "2026-03-31T16:30:00Z" },
   { id: "l8", agentId: "shotwell", category: "observation", message: "Onboarding funnel drop-off at step 3 increased by 8%. Flagging for UX review.", timestamp: "2026-03-31T14:00:00Z" },
-  { id: "l9", agentId: "clief", category: "fyi", message: "New Slack integration is live. All agent notifications now route through #ops-feed.", timestamp: "2026-03-31T12:00:00Z" },
   { id: "l10", agentId: "van", category: "general", message: "n8n workflow for lead enrichment completed. Processing 200 leads/hour.", timestamp: "2026-03-31T10:00:00Z" },
 ];
 
@@ -94,7 +89,7 @@ export const councilSessions: CouncilSession[] = [
       { agentId: "shotwell", messageNumber: 1, text: "Operationally feasible. We'd need 2 days to reconfigure the n8n pipeline and update templates.", timestamp: "2026-03-30T10:05:00Z" },
       { agentId: "andrej", messageNumber: 1, text: "The current prompt chain is email-optimized. LinkedIn requires shorter, more conversational copy. I can redesign in 4 hours.", timestamp: "2026-03-30T10:10:00Z" },
       { agentId: "hormozi", messageNumber: 2, text: "Green light. Shotwell, sequence the migration. Andrej, start prompt redesign. Ship by Thursday.", timestamp: "2026-03-30T10:15:00Z" },
-      { agentId: "shotwell", messageNumber: 2, text: "Confirmed. Migration plan drafted. Van will handle the technical implementation.", timestamp: "2026-03-30T10:20:00Z" },
+      { agentId: "shotwell", messageNumber: 2, text: "Confirmed. Migration plan drafted. Execution goes to Van and Andrej, then returns to Shotwell for verification.", timestamp: "2026-03-30T10:20:00Z" },
     ],
   },
   {
@@ -148,18 +143,16 @@ export const meetings: Meeting[] = [
 
 export const activityFeed = [
   { id: "a1", agentId: "hormozi", action: "Approved Q2 revenue strategy", timestamp: "2m ago" },
-  { id: "a2", agentId: "clief", action: "Routed 3 tasks to Van for execution", timestamp: "5m ago" },
   { id: "a3", agentId: "andrej", action: "Completed prompt chain audit — v3.2 ready", timestamp: "12m ago" },
   { id: "a4", agentId: "shotwell", action: "Cleared pipeline bottleneck in onboarding flow", timestamp: "18m ago" },
   { id: "a5", agentId: "van", action: "Deployed CRM integration edge function", timestamp: "25m ago" },
   { id: "a6", agentId: "hormozi", action: "Flagged competitor pricing change for review", timestamp: "1h ago" },
-  { id: "a7", agentId: "clief", action: "Escalated 2 high-priority tasks to Hormozi", timestamp: "1h ago" },
   { id: "a8", agentId: "andrej", action: "Switched AI fallback model due to latency spike", timestamp: "2h ago" },
 ];
 
 export const metricCards = [
   { label: "Tasks Completed", value: 906, trend: "+12%", icon: "CheckCircle" as const },
-  { label: "Active Agents", value: 3, trend: "3 of 5", icon: "Users" as const },
+  { label: "Active Agents", value: 3, trend: "3 of 4", icon: "Users" as const },
   { label: "Avg Accuracy", value: 95.6, trend: "+2.1%", icon: "Target" as const, suffix: "%" },
-  { label: "Tasks Routed Today", value: 14, trend: "+3", icon: "ArrowRightLeft" as const },
+  { label: "Tasks Processed Today", value: 14, trend: "+3", icon: "ArrowRightLeft" as const },
 ];

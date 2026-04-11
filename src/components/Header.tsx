@@ -27,9 +27,9 @@ const Header = () => {
       style={{ borderLeft: "3px solid hsl(160, 84%, 39%)", boxShadow: "inset 4px 0 12px rgba(16,185,129,0.10)" }}
     >
       <div className="flex items-center gap-3">
-        <img src={logo} alt="OXIVO logo" className="h-9 w-9 rounded-lg bg-foreground/90 p-1" />
+        <img src={logo} alt="AXIVO logo" className="h-9 w-9 rounded-lg bg-foreground/90 p-1" />
         <div>
-          <h1 className="text-xl font-bold tracking-tight">OXIVO</h1>
+          <h1 className="text-xl font-bold tracking-tight">AXIVO</h1>
           <p className="text-xs text-muted-foreground">AI Agent Command Center</p>
         </div>
       </div>

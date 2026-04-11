@@ -2,7 +2,7 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { format, parseISO } from "date-fns";
 import { ChevronDown, Check, Loader2 } from "lucide-react";
-import { agents, councilSessions } from "@/data/mockData";
+import { useDashboard } from "@/context/DashboardDataContext";
 import { Badge } from "@/components/ui/badge";
 
 const statusBadge: Record<string, string> = {
@@ -13,9 +13,16 @@ const statusBadge: Record<string, string> = {
 
 const Council = () => {
   const [open, setOpen] = useState<string | null>(null);
+  const { agents, councilSessions, live } = useDashboard();
 
   return (
     <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-sm font-semibold">Council</h2>
+          <p className="text-[11px] text-muted-foreground">{live ? "Live council sessions from Supabase" : "Showing fallback mock sessions"}</p>
+        </div>
+      </div>
       {councilSessions.map((s) => {
         const isOpen = open === s.id;
         return (
@@ -29,18 +36,19 @@ const Council = () => {
                 <p className="text-sm font-semibold">{s.question}</p>
                 <div className="flex flex-wrap gap-2 mt-2">
                   {s.participants.map((p) => {
-                    const agent = agents.find((a) => a.id === p.agentId)!;
+                    const agent = agents.find((a) => a.id === p.agentId);
+                    const isDone = p.sent >= p.limit;
                     return (
                       <span key={p.agentId} className="inline-flex items-center gap-1 rounded-full bg-secondary px-2.5 py-0.5 text-[11px]">
-                        {agent.emoji} {agent.name}
+                        {agent?.emoji || "🤖"} {agent?.name || p.agentId}
                         <span className="font-mono text-muted-foreground">{p.sent}/{p.limit}</span>
-                        {p.sent >= p.limit ? <Check size={10} className="text-primary" /> : <Loader2 size={10} className="text-amber animate-spin" />}
+                        {isDone ? <Check size={10} className="text-primary" /> : <Loader2 size={10} className="text-amber animate-spin" />}
                       </span>
                     );
                   })}
                 </div>
               </div>
-              <Badge variant="outline" className={`text-[10px] shrink-0 ${statusBadge[s.status]}`}>{s.status}</Badge>
+              <Badge variant="outline" className={`text-[10px] shrink-0 ${statusBadge[s.status] || statusBadge.pending}`}>{s.status}</Badge>
             </button>
             <AnimatePresence>
               {isOpen && (
@@ -53,19 +61,19 @@ const Council = () => {
                 >
                   <div className="border-t border-border px-5 py-4 space-y-3">
                     {s.messages.map((m, i) => {
-                      const agent = agents.find((a) => a.id === m.agentId)!;
+                      const agent = agents.find((a) => a.id === m.agentId);
                       return (
                         <motion.div
-                          key={i}
+                          key={`${m.agentId}-${m.messageNumber}-${i}`}
                           initial={{ opacity: 0, x: -10 }}
                           animate={{ opacity: 1, x: 0 }}
                           transition={{ delay: i * 0.06 }}
                           className="flex gap-3 text-sm"
                         >
-                          <span className="text-lg shrink-0">{agent.emoji}</span>
+                          <span className="text-lg shrink-0">{agent?.emoji || "🤖"}</span>
                           <div>
                             <div className="flex items-center gap-2 mb-0.5">
-                              <span className="font-medium">{agent.name}</span>
+                              <span className="font-medium">{agent?.name || m.agentId}</span>
                               <span className="text-[10px] text-muted-foreground font-mono">#{m.messageNumber}</span>
                               <span className="text-[10px] text-muted-foreground">{format(parseISO(m.timestamp), "h:mm a")}</span>
                             </div>
