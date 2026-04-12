@@ -4,6 +4,9 @@ import { createAILogEntry, updateAILogEntry, deleteAILogEntry } from './mutation
 import { createCouncilSession, updateCouncilSession, deleteCouncilSession } from './mutations/councilMutations';
 import { createMeeting, updateMeeting, deleteMeeting } from './mutations/meetingMutations';
 
+const ACTIVE_AGENT_IDS = new Set(['hormozi', 'shotwell', 'van', 'andrej']);
+const LEGACY_TERMS = ['clief', 'oxivo_'];
+
 // WRITE OPERATIONS
 export async function createLogEntry(logEntry: Omit<LogEntry, 'id'>): Promise<LogEntry | null> {
   return await createAILogEntry(logEntry);
@@ -58,22 +61,29 @@ export async function fetchAgents(): Promise<Agent[]> {
       if (row.from_agent) agentNames.add(row.from_agent);
       if (row.to_agent) agentNames.add(row.to_agent);
     });
+
+    const profiles: Record<string, Pick<Agent, 'emoji' | 'type' | 'role' | 'accentColor'>> = {
+      hormozi: { emoji: '⚡', type: 'CEO', role: 'Front door + Decisions + Final reporting', accentColor: '#fb7185' },
+      shotwell: { emoji: '🧭', type: 'COO', role: 'Breakdown + Sequencing + Verification', accentColor: '#f59e0b' },
+      van: { emoji: '🛠️', type: 'Builder', role: 'Implementation and build execution', accentColor: '#a3e635' },
+      andrej: { emoji: '🧠', type: 'Builder', role: 'Implementation and build execution', accentColor: '#8b5cf6' },
+    };
     
-    // Convert to Agent objects with default values
-    return Array.from(agentNames).map(name => ({
-      id: name.toLowerCase().replace(/\s+/g, '-'),
-      name,
-      emoji: '🤖',
-      type: 'Agent',
-      role: '',
-      accentColor: '#8b5cf6',
-      status: 'idle',
-      currentActivity: 'Idle',
-      lastSeen: new Date().toISOString(),
-      tasksCompleted: 0,
-      accuracy: 0,
-      skills: [],
-    }));
+    // Convert to Agent objects, keeping only active chain
+    return Array.from(agentNames)
+      .map(name => ({ raw: name, id: String(name).toLowerCase().replace(/\s+/g, '-') }))
+      .filter(a => ACTIVE_AGENT_IDS.has(a.id))
+      .map(({ raw, id }) => ({
+        id,
+        name: raw,
+        ...profiles[id],
+        status: 'idle',
+        currentActivity: 'Idle',
+        lastSeen: new Date().toISOString(),
+        tasksCompleted: 0,
+        accuracy: 0,
+        skills: [],
+      }));
   } catch (error) {
     console.error('Error fetching agents:', error);
     return [];
@@ -89,26 +99,28 @@ export async function fetchTasks(): Promise<TaskItem[]> {
     
     if (error) throw error;
     
-    return (data || []).map((t: any) => {
-      const rawStatus = String(t.status || '').toLowerCase().trim();
-      const needsInputStatuses = new Set(['needs output', 'needs-output', 'needs_output', 'needs input', 'needs-input', 'needs_input', 'blocked']);
-      const doingStatuses = new Set(['claimed', 'in progress', 'in-progress', 'in_progress', 'doing']);
-      const doneStatuses = new Set(['completed', 'complete', 'done']);
+    return (data || [])
+      .filter((t: any) => ACTIVE_AGENT_IDS.has(String(t.to_agent || '').toLowerCase().replace(/\s+/g, '-')))
+      .map((t: any) => {
+        const rawStatus = String(t.status || '').toLowerCase().trim();
+        const needsInputStatuses = new Set(['needs output', 'needs-output', 'needs_output', 'needs input', 'needs-input', 'needs_input', 'blocked']);
+        const doingStatuses = new Set(['claimed', 'in progress', 'in-progress', 'in_progress', 'doing']);
+        const doneStatuses = new Set(['completed', 'complete', 'done']);
 
-      let column: TaskItem['column'] = 'todo';
-      if (doneStatuses.has(rawStatus)) column = 'done';
-      else if (doingStatuses.has(rawStatus)) column = 'doing';
-      else if (needsInputStatuses.has(rawStatus)) column = 'needs-input';
+        let column: TaskItem['column'] = 'todo';
+        if (doneStatuses.has(rawStatus)) column = 'done';
+        else if (doingStatuses.has(rawStatus)) column = 'doing';
+        else if (needsInputStatuses.has(rawStatus)) column = 'needs-input';
 
-      return {
-        id: t.id,
-        title: t.task_title || 'Untitled Task',
-        agentId: t.to_agent || 'unknown',
-        priority: t.priority || 'medium',
-        progress: column === 'done' ? 100 : 0,
-        column,
-      };
-    });
+        return {
+          id: t.id,
+          title: t.task_title || 'Untitled Task',
+          agentId: String(t.to_agent || 'unknown').toLowerCase().replace(/\s+/g, '-'),
+          priority: t.priority || 'medium',
+          progress: column === 'done' ? 100 : 0,
+          column,
+        };
+      });
   } catch (error) {
     console.error('Error fetching tasks:', error);
     return [];
@@ -124,13 +136,20 @@ export async function fetchLogs(): Promise<LogEntry[]> {
     
     if (error) throw error;
     
-    return (data || []).map((l: any) => ({
-      id: l.id,
-      agentId: l.from_agent || 'unknown',
-      category: l.message_type || 'general',
-      message: l.message || '',
-      timestamp: l.created_at || new Date().toISOString(),
-    }));
+    return (data || [])
+      .filter((l: any) => {
+        const fromId = String(l.from_agent || '').toLowerCase().replace(/\s+/g, '-');
+        if (!ACTIVE_AGENT_IDS.has(fromId)) return false;
+        const msg = String(l.message || '').toLowerCase();
+        return !LEGACY_TERMS.some(term => msg.includes(term));
+      })
+      .map((l: any) => ({
+        id: l.id,
+        agentId: String(l.from_agent || 'unknown').toLowerCase().replace(/\s+/g, '-'),
+        category: l.message_type || 'general',
+        message: l.message || '',
+        timestamp: l.created_at || new Date().toISOString(),
+      }));
   } catch (error) {
     console.error('Error fetching logs:', error);
     return [];
