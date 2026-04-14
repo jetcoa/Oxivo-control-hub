@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
+import { supabaseAnonKey, supabaseUrl } from "@/lib/supabase";
 
 type QueueView = "New" | "Hot" | "Stuck" | "Overdue";
 type QueueState = "loading" | "ready" | "error";
@@ -22,10 +23,7 @@ type QueueLead = {
 const queueViews: QueueView[] = ["New", "Hot", "Stuck", "Overdue"];
 
 const queueSeed: Record<QueueView, QueueLead[]> = {
-  New: [
-    { id: "L-1001", name: "Mia Santos", source: "FB Ads", stage: "New", owner: "Jet", priority: "Medium", followUpDue: "Today 6:00 PM", lastAction: "Lead created" },
-    { id: "L-1002", name: "Renz Dela Cruz", source: "Website", stage: "New", owner: "Andrej", priority: "High", followUpDue: "Today 7:30 PM", lastAction: "Initial triage" },
-  ],
+  New: [],
   Hot: [
     { id: "L-1021", name: "Aria Tan", source: "Referral", stage: "Negotiation", owner: "Jet", priority: "High", followUpDue: "Today 9:00 PM", lastAction: "Pricing sent" },
     { id: "L-1028", name: "Noel Ramos", source: "Inbound", stage: "Qualified", owner: "Andrej", priority: "High", followUpDue: "Tomorrow 10:00 AM", lastAction: "Call booked" },
@@ -36,20 +34,91 @@ const queueSeed: Record<QueueView, QueueLead[]> = {
   Overdue: [],
 };
 
+function normalizePriority(value: unknown): "Low" | "Medium" | "High" {
+  const n = Number(value);
+  if (n >= 2) return "High";
+  if (n === 1) return "Medium";
+  return "Low";
+}
+
+async function fetchNewQueueFromSupabase(): Promise<QueueLead[]> {
+  const query = new URLSearchParams({
+    to_agent: "eq.andrej",
+    status: "in.(pending,in_progress)",
+    select: "id,task_title,task_body,to_agent,priority,status,created_at",
+    order: "created_at.desc",
+    limit: "25",
+  });
+
+  const response = await fetch(`${supabaseUrl}/rest/v1/axivo_dispatch_queue?${query.toString()}`, {
+    headers: {
+      apikey: supabaseAnonKey,
+      Authorization: `Bearer ${supabaseAnonKey}`,
+      "Content-Type": "application/json",
+    },
+  });
+
+  if (!response.ok) {
+    const details = await response.text();
+    throw new Error(`Supabase read failed (${response.status}): ${details}`);
+  }
+
+  const rows = (await response.json()) as Array<any>;
+  return rows.map((row) => ({
+    id: row.id,
+    name: row.task_title || "Untitled lead",
+    source: "Supabase dispatch",
+    stage: row.status || "pending",
+    owner: row.to_agent || "unassigned",
+    priority: normalizePriority(row.priority),
+    followUpDue: row.created_at ? new Date(row.created_at).toLocaleString() : "TBD",
+    lastAction: row.task_body || "No action yet",
+  }));
+}
+
 const OperatorHub = () => {
   const [activeView, setActiveView] = useState<QueueView>("New");
   const [queueState, setQueueState] = useState<QueueState>("loading");
-  const [errorMode, setErrorMode] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string>("");
+  const [leadData, setLeadData] = useState<Record<QueueView, QueueLead[]>>(queueSeed);
+  const [selectedLead, setSelectedLead] = useState<QueueLead | null>(null);
+  const [refreshTick, setRefreshTick] = useState(0);
 
   useEffect(() => {
-    setQueueState("loading");
-    const t = setTimeout(() => {
-      setQueueState(errorMode ? "error" : "ready");
-    }, 280);
-    return () => clearTimeout(t);
-  }, [activeView, errorMode]);
+    let cancelled = false;
 
-  const activeLeads = useMemo(() => queueSeed[activeView], [activeView]);
+    async function loadQueue() {
+      setQueueState("loading");
+      setErrorMessage("");
+
+      try {
+        if (activeView === "New") {
+          const newRows = await fetchNewQueueFromSupabase();
+          if (cancelled) return;
+
+          setLeadData((prev) => ({ ...prev, New: newRows }));
+          setSelectedLead((prev) => prev ?? newRows[0] ?? null);
+          setQueueState("ready");
+          return;
+        }
+
+        if (cancelled) return;
+        setSelectedLead((prev) => prev ?? queueSeed[activeView][0] ?? null);
+        setQueueState("ready");
+      } catch (error: any) {
+        if (cancelled) return;
+        setErrorMessage(error?.message || "Queue load failed");
+        setQueueState("error");
+      }
+    }
+
+    void loadQueue();
+    return () => {
+      cancelled = true;
+    };
+  }, [activeView, refreshTick]);
+
+  const activeLeads = useMemo(() => leadData[activeView], [activeView, leadData]);
 
   return (
     <div className="min-h-screen bg-background px-4 py-6 md:px-8 lg:px-12">
@@ -58,9 +127,9 @@ const OperatorHub = () => {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h1 className="text-2xl font-bold tracking-tight">Axivo IB/Broker Operator Hub v1</h1>
-              <p className="text-sm text-muted-foreground">Lead Queue filter state wired — Phase 6 / P6-02</p>
+              <p className="text-sm text-muted-foreground">P6-03 New queue is now live on Supabase REST read</p>
             </div>
-            <Badge variant="secondary">P6-02 in progress</Badge>
+            <Badge variant="secondary">P6-03 in progress</Badge>
           </div>
         </div>
 
@@ -70,8 +139,8 @@ const OperatorHub = () => {
               <CardHeader>
                 <div className="flex items-center justify-between gap-2">
                   <CardTitle>Lead Queue</CardTitle>
-                  <Button variant="outline" size="sm" onClick={() => setErrorMode((s) => !s)}>
-                    {errorMode ? "Disable Error" : "Simulate Error"}
+                  <Button variant="outline" size="sm" onClick={() => setRefreshTick((n) => n + 1)}>
+                    Refresh
                   </Button>
                 </div>
               </CardHeader>
@@ -97,7 +166,8 @@ const OperatorHub = () => {
                 {queueState === "error" && (
                   <div className="space-y-2 rounded-md border border-destructive/40 bg-destructive/5 p-4 text-sm">
                     <div className="font-medium text-destructive">Failed to load {activeView} queue.</div>
-                    <Button size="sm" variant="outline" onClick={() => setQueueState("loading")}>Retry</Button>
+                    <div className="text-muted-foreground">{errorMessage}</div>
+                    <Button size="sm" variant="outline" onClick={() => setActiveView((v) => v)}>Retry</Button>
                   </div>
                 )}
 
@@ -113,6 +183,7 @@ const OperatorHub = () => {
                       <button
                         key={lead.id}
                         className="w-full rounded-md border bg-card p-3 text-left text-sm hover:border-primary/50"
+                        onClick={() => setSelectedLead(lead)}
                         type="button"
                       >
                         <div className="flex items-center justify-between">
@@ -136,16 +207,18 @@ const OperatorHub = () => {
                 <CardTitle>Lead Detail Panel</CardTitle>
               </CardHeader>
               <CardContent className="space-y-2 text-sm">
-                <div className="text-muted-foreground">Fields to render on lead click:</div>
-                <ul className="list-inside list-disc space-y-1 text-muted-foreground">
-                  <li>name</li>
-                  <li>source</li>
-                  <li>stage</li>
-                  <li>owner</li>
-                  <li>priority</li>
-                  <li>follow-up due</li>
-                  <li>last action</li>
-                </ul>
+                {!selectedLead && <div className="text-muted-foreground">Select a lead from queue.</div>}
+                {selectedLead && (
+                  <div className="space-y-2">
+                    <div><span className="text-muted-foreground">name:</span> {selectedLead.name}</div>
+                    <div><span className="text-muted-foreground">source:</span> {selectedLead.source}</div>
+                    <div><span className="text-muted-foreground">stage:</span> {selectedLead.stage}</div>
+                    <div><span className="text-muted-foreground">owner:</span> {selectedLead.owner}</div>
+                    <div><span className="text-muted-foreground">priority:</span> {selectedLead.priority}</div>
+                    <div><span className="text-muted-foreground">follow-up due:</span> {selectedLead.followUpDue}</div>
+                    <div><span className="text-muted-foreground">last action:</span> {selectedLead.lastAction}</div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </motion.div>
