@@ -20,6 +20,8 @@ type QueueLead = {
   lastAction: string;
 };
 
+const ownerNameCache = new Map<string, string>();
+
 const queueViews: QueueView[] = ["New", "Hot", "Stuck", "Overdue"];
 
 const queueSeed: Record<QueueView, QueueLead[]> = {
@@ -40,7 +42,7 @@ function normalizePriority(value: unknown): "Low" | "Medium" | "High" {
 
 function buildQueueQuery(view: QueueView): URLSearchParams {
   const base = {
-    select: "id,name,full_name,source,current_stage,owner,assigned_to,priority,followup_due_at,last_action,stuck_reason,created_at",
+    select: "id,full_name,source_channel,current_stage,assigned_to,priority,followup_due_at,stuck_reason,created_at,updated_at",
     order: "created_at.desc",
     limit: "25",
   } as Record<string, string>;
@@ -60,6 +62,39 @@ function buildQueueQuery(view: QueueView): URLSearchParams {
   return new URLSearchParams({ ...base, followup_due_at: "lt.NOW()", current_stage: "not.in.(converted,lost,nurture)" });
 }
 
+async function resolveOwnerNames(ownerIds: string[]): Promise<Map<string, string>> {
+  const unresolved = ownerIds.filter((id) => id && !ownerNameCache.has(id));
+  if (!unresolved.length) return ownerNameCache;
+
+  const selectVariants = [
+    'id,full_name',
+    'id,name',
+    'id,display_name',
+  ];
+
+  for (const select of selectVariants) {
+    const ids = unresolved.map((id) => `"${id}"`).join(',');
+    const query = new URLSearchParams({ select, id: `in.(${ids})` });
+    const res = await fetch(`${supabaseUrl}/rest/v1/users?${query.toString()}`, {
+      headers: {
+        apikey: supabaseAnonKey,
+        Authorization: `Bearer ${supabaseAnonKey}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!res.ok) continue;
+    const rows = (await res.json()) as Array<any>;
+    rows.forEach((r) => {
+      const name = r.full_name || r.name || r.display_name;
+      if (r.id && name) ownerNameCache.set(r.id, name);
+    });
+    break;
+  }
+
+  return ownerNameCache;
+}
+
 async function fetchQueueFromSupabase(view: QueueView): Promise<QueueLead[]> {
   const query = buildQueueQuery(view);
   const response = await fetch(`${supabaseUrl}/rest/v1/leads?${query.toString()}`, {
@@ -76,17 +111,20 @@ async function fetchQueueFromSupabase(view: QueueView): Promise<QueueLead[]> {
   }
 
   const rows = (await response.json()) as Array<any>;
+  const ownerIds = Array.from(new Set(rows.map((r) => r.assigned_to).filter(Boolean)));
+  const ownerMap = await resolveOwnerNames(ownerIds as string[]);
+
   return rows.map((row) => ({
     id: row.id,
-    name: row.name || row.full_name || "Untitled lead",
-    source: row.source || "Unknown",
+    name: row.full_name || "Untitled lead",
+    source: row.source_channel || "Unknown",
     stage: row.current_stage || "new",
-    owner: row.owner || row.assigned_to || "unassigned",
+    owner: row.assigned_to ? (ownerMap.get(row.assigned_to) || row.assigned_to) : "unassigned",
     priority: typeof row.priority === 'string'
       ? (String(row.priority).toLowerCase() === 'high' ? 'High' : String(row.priority).toLowerCase() === 'medium' ? 'Medium' : 'Low')
       : normalizePriority(row.priority),
     followUpDue: row.followup_due_at ? new Date(row.followup_due_at).toLocaleString() : "TBD",
-    lastAction: row.last_action || row.stuck_reason || "No action yet",
+    lastAction: row.stuck_reason || (row.updated_at ? `Updated ${new Date(row.updated_at).toLocaleString()}` : "No action yet"),
   }));
 }
 
