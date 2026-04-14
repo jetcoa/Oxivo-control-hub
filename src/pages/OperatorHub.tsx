@@ -24,10 +24,7 @@ const queueViews: QueueView[] = ["New", "Hot", "Stuck", "Overdue"];
 
 const queueSeed: Record<QueueView, QueueLead[]> = {
   New: [],
-  Hot: [
-    { id: "L-1021", name: "Aria Tan", source: "Referral", stage: "Negotiation", owner: "Jet", priority: "High", followUpDue: "Today 9:00 PM", lastAction: "Pricing sent" },
-    { id: "L-1028", name: "Noel Ramos", source: "Inbound", stage: "Qualified", owner: "Andrej", priority: "High", followUpDue: "Tomorrow 10:00 AM", lastAction: "Call booked" },
-  ],
+  Hot: [],
   Stuck: [
     { id: "L-1050", name: "Karla Uy", source: "Messenger", stage: "Needs Reply", owner: "Jet", priority: "Medium", followUpDue: "Overdue 1d", lastAction: "Awaiting response" },
   ],
@@ -41,15 +38,29 @@ function normalizePriority(value: unknown): "Low" | "Medium" | "High" {
   return "Low";
 }
 
-async function fetchNewQueueFromSupabase(): Promise<QueueLead[]> {
-  const query = new URLSearchParams({
+function buildQueueQuery(view: QueueView): URLSearchParams {
+  if (view === "Hot") {
+    return new URLSearchParams({
+      to_agent: "eq.andrej",
+      status: "eq.in_progress",
+      priority: "gte.1",
+      select: "id,task_title,task_body,to_agent,priority,status,created_at",
+      order: "created_at.desc",
+      limit: "25",
+    });
+  }
+
+  return new URLSearchParams({
     to_agent: "eq.andrej",
     status: "in.(pending,in_progress)",
     select: "id,task_title,task_body,to_agent,priority,status,created_at",
     order: "created_at.desc",
     limit: "25",
   });
+}
 
+async function fetchQueueFromSupabase(view: QueueView): Promise<QueueLead[]> {
+  const query = buildQueueQuery(view);
   const response = await fetch(`${supabaseUrl}/rest/v1/axivo_dispatch_queue?${query.toString()}`, {
     headers: {
       apikey: supabaseAnonKey,
@@ -92,12 +103,12 @@ const OperatorHub = () => {
       setErrorMessage("");
 
       try {
-        if (activeView === "New") {
-          const newRows = await fetchNewQueueFromSupabase();
+        if (activeView === "New" || activeView === "Hot") {
+          const rows = await fetchQueueFromSupabase(activeView);
           if (cancelled) return;
 
-          setLeadData((prev) => ({ ...prev, New: newRows }));
-          setSelectedLead((prev) => prev ?? newRows[0] ?? null);
+          setLeadData((prev) => ({ ...prev, [activeView]: rows }));
+          setSelectedLead((prev) => prev ?? rows[0] ?? null);
           setQueueState("ready");
           return;
         }
@@ -127,9 +138,9 @@ const OperatorHub = () => {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h1 className="text-2xl font-bold tracking-tight">Axivo IB/Broker Operator Hub v1</h1>
-              <p className="text-sm text-muted-foreground">P6-03 New queue is now live on Supabase REST read</p>
+              <p className="text-sm text-muted-foreground">P6-04 Hot queue is now wired to Supabase REST read</p>
             </div>
-            <Badge variant="secondary">P6-03 in progress</Badge>
+            <Badge variant="secondary">P6-04 in progress</Badge>
           </div>
         </div>
 
@@ -167,7 +178,7 @@ const OperatorHub = () => {
                   <div className="space-y-2 rounded-md border border-destructive/40 bg-destructive/5 p-4 text-sm">
                     <div className="font-medium text-destructive">Failed to load {activeView} queue.</div>
                     <div className="text-muted-foreground">{errorMessage}</div>
-                    <Button size="sm" variant="outline" onClick={() => setActiveView((v) => v)}>Retry</Button>
+                    <Button size="sm" variant="outline" onClick={() => setRefreshTick((n) => n + 1)}>Retry</Button>
                   </div>
                 )}
 
