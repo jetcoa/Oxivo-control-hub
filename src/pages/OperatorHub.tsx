@@ -39,18 +39,30 @@ function normalizePriority(value: unknown): "Low" | "Medium" | "High" {
 }
 
 function buildQueueQuery(view: QueueView): URLSearchParams {
-  // TODO: replace with provided Lead Queue API filters from AXIVO IB/Broker schema.
-  return new URLSearchParams({
-    queue: `eq.${view.toLowerCase()}`,
-    select: "id,name,source,stage,owner,priority,follow_up_due,last_action",
-    order: "follow_up_due.asc",
+  const base = {
+    select: "id,name,full_name,source,current_stage,owner,assigned_to,priority,followup_due_at,last_action,stuck_reason,created_at",
+    order: "created_at.desc",
     limit: "25",
-  });
+  } as Record<string, string>;
+
+  if (view === "New") {
+    return new URLSearchParams({ ...base, current_stage: "eq.new_lead" });
+  }
+
+  if (view === "Hot") {
+    return new URLSearchParams({ ...base, priority: "eq.high", current_stage: "not.in.(converted,lost)" });
+  }
+
+  if (view === "Stuck") {
+    return new URLSearchParams({ ...base, stuck_reason: "not.is.null", current_stage: "not.in.(converted,lost)" });
+  }
+
+  return new URLSearchParams({ ...base, followup_due_at: "lt.NOW()", current_stage: "not.in.(converted,lost,nurture)" });
 }
 
 async function fetchQueueFromSupabase(view: QueueView): Promise<QueueLead[]> {
   const query = buildQueueQuery(view);
-  const response = await fetch(`${supabaseUrl}/rest/v1/ib_broker_leads?${query.toString()}`, {
+  const response = await fetch(`${supabaseUrl}/rest/v1/leads?${query.toString()}`, {
     headers: {
       apikey: supabaseAnonKey,
       Authorization: `Bearer ${supabaseAnonKey}`,
@@ -66,13 +78,15 @@ async function fetchQueueFromSupabase(view: QueueView): Promise<QueueLead[]> {
   const rows = (await response.json()) as Array<any>;
   return rows.map((row) => ({
     id: row.id,
-    name: row.name || "Untitled lead",
+    name: row.name || row.full_name || "Untitled lead",
     source: row.source || "Unknown",
-    stage: row.stage || "new",
-    owner: row.owner || "unassigned",
-    priority: normalizePriority(row.priority),
-    followUpDue: row.follow_up_due ? new Date(row.follow_up_due).toLocaleString() : "TBD",
-    lastAction: row.last_action || "No action yet",
+    stage: row.current_stage || "new",
+    owner: row.owner || row.assigned_to || "unassigned",
+    priority: typeof row.priority === 'string'
+      ? (String(row.priority).toLowerCase() === 'high' ? 'High' : String(row.priority).toLowerCase() === 'medium' ? 'Medium' : 'Low')
+      : normalizePriority(row.priority),
+    followUpDue: row.followup_due_at ? new Date(row.followup_due_at).toLocaleString() : "TBD",
+    lastAction: row.last_action || row.stuck_reason || "No action yet",
   }));
 }
 
@@ -92,18 +106,11 @@ const OperatorHub = () => {
       setErrorMessage("");
 
       try {
-        if (activeView === "New" || activeView === "Hot") {
-          const rows = await fetchQueueFromSupabase(activeView);
-          if (cancelled) return;
-
-          setLeadData((prev) => ({ ...prev, [activeView]: rows }));
-          setSelectedLead((prev) => prev ?? rows[0] ?? null);
-          setQueueState("ready");
-          return;
-        }
-
+        const rows = await fetchQueueFromSupabase(activeView);
         if (cancelled) return;
-        setSelectedLead((prev) => prev ?? queueSeed[activeView][0] ?? null);
+
+        setLeadData((prev) => ({ ...prev, [activeView]: rows }));
+        setSelectedLead(rows[0] ?? null);
         setQueueState("ready");
       } catch (error: any) {
         if (cancelled) return;
