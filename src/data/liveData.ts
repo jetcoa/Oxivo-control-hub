@@ -112,12 +112,30 @@ export async function fetchTasks(): Promise<TaskItem[]> {
         else if (doingStatuses.has(rawStatus)) column = 'doing';
         else if (needsInputStatuses.has(rawStatus)) column = 'needs-input';
 
+        const explicitProgressRaw = (t as any).progress ?? (t as any)?.payload?.progress;
+        const explicitProgress = Number(explicitProgressRaw);
+        const hasExplicitProgress = Number.isFinite(explicitProgress);
+        const normalizedExplicitProgress = hasExplicitProgress
+          ? Math.max(0, Math.min(100, explicitProgress))
+          : undefined;
+
+        // Guardrail: DONE must always render as 100%.
+        // Avoid fake defaults for DOING; only show progress when explicit values exist.
+        const progress =
+          column === 'done'
+            ? 100
+            : hasExplicitProgress
+              ? normalizedExplicitProgress
+              : column === 'needs-input'
+                ? 10
+                : undefined;
+
         return {
           id: t.id,
           title: t.task_title || 'Untitled Task',
           agentId: String(t.to_agent || 'unknown').toLowerCase().replace(/\s+/g, '-'),
           priority: t.priority || 'medium',
-          progress: column === 'done' ? 100 : 0,
+          progress,
           column,
         };
       });
