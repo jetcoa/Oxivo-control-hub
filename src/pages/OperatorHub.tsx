@@ -39,29 +39,18 @@ function normalizePriority(value: unknown): "Low" | "Medium" | "High" {
 }
 
 function buildQueueQuery(view: QueueView): URLSearchParams {
-  if (view === "Hot") {
-    return new URLSearchParams({
-      to_agent: "eq.andrej",
-      status: "eq.in_progress",
-      priority: "gte.1",
-      select: "id,task_title,task_body,to_agent,priority,status,created_at",
-      order: "created_at.desc",
-      limit: "25",
-    });
-  }
-
+  // TODO: replace with provided Lead Queue API filters from AXIVO IB/Broker schema.
   return new URLSearchParams({
-    to_agent: "eq.andrej",
-    status: "in.(pending,in_progress)",
-    select: "id,task_title,task_body,to_agent,priority,status,created_at",
-    order: "created_at.desc",
+    queue: `eq.${view.toLowerCase()}`,
+    select: "id,name,source,stage,owner,priority,follow_up_due,last_action",
+    order: "follow_up_due.asc",
     limit: "25",
   });
 }
 
 async function fetchQueueFromSupabase(view: QueueView): Promise<QueueLead[]> {
   const query = buildQueueQuery(view);
-  const response = await fetch(`${supabaseUrl}/rest/v1/axivo_dispatch_queue?${query.toString()}`, {
+  const response = await fetch(`${supabaseUrl}/rest/v1/ib_broker_leads?${query.toString()}`, {
     headers: {
       apikey: supabaseAnonKey,
       Authorization: `Bearer ${supabaseAnonKey}`,
@@ -71,19 +60,19 @@ async function fetchQueueFromSupabase(view: QueueView): Promise<QueueLead[]> {
 
   if (!response.ok) {
     const details = await response.text();
-    throw new Error(`Supabase read failed (${response.status}): ${details}`);
+    throw new Error(`Lead source read failed (${response.status}): ${details}`);
   }
 
   const rows = (await response.json()) as Array<any>;
   return rows.map((row) => ({
     id: row.id,
-    name: row.task_title || "Untitled lead",
-    source: "Supabase dispatch",
-    stage: row.status || "pending",
-    owner: row.to_agent || "unassigned",
+    name: row.name || "Untitled lead",
+    source: row.source || "Unknown",
+    stage: row.stage || "new",
+    owner: row.owner || "unassigned",
     priority: normalizePriority(row.priority),
-    followUpDue: row.created_at ? new Date(row.created_at).toLocaleString() : "TBD",
-    lastAction: row.task_body || "No action yet",
+    followUpDue: row.follow_up_due ? new Date(row.follow_up_due).toLocaleString() : "TBD",
+    lastAction: row.last_action || "No action yet",
   }));
 }
 
