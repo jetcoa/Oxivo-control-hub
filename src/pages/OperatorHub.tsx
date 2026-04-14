@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
-import { supabaseAnonKey, supabaseUrl } from "@/lib/supabase";
+import { operatorSupabaseAnonKey as supabaseAnonKey, operatorSupabaseUrl as supabaseUrl } from "@/lib/supabaseOperator";
 
 type QueueView = "New" | "Hot" | "Stuck" | "Overdue";
 type QueueState = "loading" | "ready" | "error";

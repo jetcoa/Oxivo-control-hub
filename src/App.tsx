@@ -3,7 +3,8 @@ import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import Index from "./pages/Index.tsx";
+import AgentCenter from "./pages/AgentCenter.tsx";
+import AgentCenterOld from "./pages/AgentCenterOld.tsx";
 import OperatorHub from "./pages/OperatorHub.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
@@ -16,8 +17,11 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<OperatorHub />} />
-          <Route path="/legacy" element={<Index />} />
+          <Route path="/" element={<AgentCenter />} />
+          <Route path="/agent-center" element={<AgentCenter />} />
+          <Route path="/agent-center-old" element={<AgentCenterOld />} />
+          <Route path="/operator-hub" element={<OperatorHub />} />
+          <Route path="/legacy" element={<AgentCenterOld />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
