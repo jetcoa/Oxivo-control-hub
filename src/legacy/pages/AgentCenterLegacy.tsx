@@ -1,34 +1,34 @@
 import { useState } from "react";
-import { DashboardDataProvider } from "@/context/DashboardDataContext";
+import { DashboardDataProvider } from "@/legacy/context/DashboardDataContext";
 import { motion, AnimatePresence } from "framer-motion";
 import Header from "@/components/Header";
-import CommandDeck from "@/components/tabs/CommandDeck";
-import AgentProfiles from "@/components/tabs/AgentProfiles";
-import TaskBoard from "@/components/tabs/TaskBoard";
-import AILog from "@/components/tabs/AILog";
-import Council from "@/components/tabs/Council";
-import MeetingIntelligence from "@/components/tabs/MeetingIntelligence";
+import CommandDeck from "@/legacy/components/tabs/CommandDeck";
+import AgentProfiles from "@/legacy/components/tabs/AgentProfiles";
+import TaskBoard from "@/legacy/components/tabs/TaskBoard";
+import AILog from "@/legacy/components/tabs/AILog";
+import Council from "@/legacy/components/tabs/Council";
+import MeetingIntelligence from "@/legacy/components/tabs/MeetingIntelligence";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { LayoutDashboard, Users, Kanban, ScrollText, MessageSquare, Video } from "lucide-react";
 
 const tabs = [
-  { value: "tasks", label: "Task Board", Icon: Kanban },
   { value: "deck", label: "Command Deck", Icon: LayoutDashboard },
   { value: "agents", label: "Agents", Icon: Users },
+  { value: "tasks", label: "Task Board", Icon: Kanban },
   { value: "log", label: "AI Log", Icon: ScrollText },
   { value: "council", label: "Council", Icon: MessageSquare },
   { value: "meetings", label: "Meetings", Icon: Video },
 ];
 
-const AgentCenter = () => {
-  const [activeTab, setActiveTab] = useState("tasks");
+const AgentCenterLegacy = () => {
+  const [activeTab, setActiveTab] = useState("deck");
 
   return (
     <DashboardDataProvider>
       <div className="min-h-screen bg-background px-4 py-6 md:px-8 lg:px-12">
         <div className="mx-auto max-w-7xl">
           <Header />
-          <p className="mb-3 text-xs text-primary">Agent Center (Current Surface)</p>
+          <p className="mb-3 text-xs text-muted-foreground">Legacy Surface</p>
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="glass-card mb-6 flex h-auto w-full flex-wrap gap-1 bg-transparent p-1.5">
               {tabs.map((t, i) => (
@@ -56,4 +56,4 @@ const AgentCenter = () => {
   );
 };
 
-export default AgentCenter;
+export default AgentCenterLegacy;
