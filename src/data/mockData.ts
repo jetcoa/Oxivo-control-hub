@@ -26,6 +26,7 @@ export interface TaskItem {
   agentId: string;
   priority: "low" | "medium" | "high" | "urgent";
   progress?: number;
+  createdAt?: string;
   column: "todo" | "doing" | "needs-input" | "done";
 }
 

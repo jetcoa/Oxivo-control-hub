@@ -47,43 +47,84 @@ export async function deleteMeetingEntry(meetingId: string): Promise<boolean> {
 // FETCH OPERATIONS (Enhanced to read from our storage)
 export async function fetchAgents(): Promise<Agent[]> {
   try {
-    // Extract unique agent names from axivo_agent_comms since no dedicated agents table
-    const { data, error } = await supabase
-      .from('axivo_agent_comms')
-      .select('from_agent, to_agent')
-      .order('created_at', { ascending: false });
-    
-    if (error) throw error;
-    
-    // Collect unique agent names
-    const agentNames = new Set<string>();
-    (data || []).forEach((row: any) => {
-      if (row.from_agent) agentNames.add(row.from_agent);
-      if (row.to_agent) agentNames.add(row.to_agent);
+    const profiles: Record<string, Pick<Agent, 'name' | 'emoji' | 'type' | 'role' | 'accentColor'>> = {
+      hormozi: { name: 'Hormozi', emoji: '⚡', type: 'CEO', role: 'Front door + Decisions + Final reporting', accentColor: '#fb7185' },
+      shotwell: { name: 'Shotwell', emoji: '🧭', type: 'COO', role: 'Breakdown + Sequencing + Verification', accentColor: '#f59e0b' },
+      van: { name: 'Van', emoji: '🛠️', type: 'Builder', role: 'Implementation and build execution', accentColor: '#a3e635' },
+      andrej: { name: 'Andrej', emoji: '🧠', type: 'Builder', role: 'Implementation and build execution', accentColor: '#8b5cf6' },
+    };
+
+    const [{ data: comms, error: commsError }, { data: tasks, error: tasksError }] = await Promise.all([
+      supabase
+        .from('axivo_agent_comms')
+        .select('from_agent, created_at, message_type')
+        .order('created_at', { ascending: false })
+        .limit(500),
+      supabase
+        .from('axivo_dispatch_queue')
+        .select('to_agent, status')
+        .order('created_at', { ascending: false })
+        .limit(1000),
+    ]);
+
+    if (commsError) throw commsError;
+    if (tasksError) throw tasksError;
+
+    const now = Date.now();
+    const lastSeenMs: Record<string, number | null> = {
+      hormozi: null,
+      shotwell: null,
+      van: null,
+      andrej: null,
+    };
+
+    (comms || []).forEach((row: any) => {
+      const id = String(row.from_agent || '').toLowerCase().replace(/\s+/g, '-');
+      if (!ACTIVE_AGENT_IDS.has(id)) return;
+      if (!lastSeenMs[id]) {
+        const ts = row.created_at ? Date.parse(row.created_at) : NaN;
+        if (Number.isFinite(ts)) lastSeenMs[id] = ts;
+      }
     });
 
-    const profiles: Record<string, Pick<Agent, 'emoji' | 'type' | 'role' | 'accentColor'>> = {
-      hormozi: { emoji: '⚡', type: 'CEO', role: 'Front door + Decisions + Final reporting', accentColor: '#fb7185' },
-      shotwell: { emoji: '🧭', type: 'COO', role: 'Breakdown + Sequencing + Verification', accentColor: '#f59e0b' },
-      van: { emoji: '🛠️', type: 'Builder', role: 'Implementation and build execution', accentColor: '#a3e635' },
-      andrej: { emoji: '🧠', type: 'Builder', role: 'Implementation and build execution', accentColor: '#8b5cf6' },
+    const taskStats: Record<string, { total: number; done: number; doing: number }> = {
+      hormozi: { total: 0, done: 0, doing: 0 },
+      shotwell: { total: 0, done: 0, doing: 0 },
+      van: { total: 0, done: 0, doing: 0 },
+      andrej: { total: 0, done: 0, doing: 0 },
     };
-    
-    // Convert to Agent objects, keeping only active chain
-    return Array.from(agentNames)
-      .map(name => ({ raw: name, id: String(name).toLowerCase().replace(/\s+/g, '-') }))
-      .filter(a => ACTIVE_AGENT_IDS.has(a.id))
-      .map(({ raw, id }) => ({
+
+    const doneStatuses = new Set(['completed', 'complete', 'done', 'verified', 'approved', 'closed']);
+    const doingStatuses = new Set(['in_progress', 'in progress', 'in-progress', 'doing', 'claimed']);
+
+    (tasks || []).forEach((row: any) => {
+      const id = String(row.to_agent || '').toLowerCase().replace(/\s+/g, '-');
+      if (!ACTIVE_AGENT_IDS.has(id)) return;
+      const status = String(row.status || '').toLowerCase().trim();
+      taskStats[id].total += 1;
+      if (doneStatuses.has(status)) taskStats[id].done += 1;
+      if (doingStatuses.has(status)) taskStats[id].doing += 1;
+    });
+
+    return (Object.keys(profiles) as Array<keyof typeof profiles>).map((id) => {
+      const lastMs = lastSeenMs[id];
+      const minsAgo = lastMs ? Math.max(0, Math.round((now - lastMs) / 60000)) : null;
+      const status: Agent['status'] = taskStats[id].doing > 0 ? 'active' : 'idle';
+      const accuracy = taskStats[id].total > 0
+        ? Math.round((taskStats[id].done / taskStats[id].total) * 100)
+        : 100;
+
+      return {
         id,
-        name: raw,
         ...profiles[id],
-        status: 'idle',
-        currentActivity: 'Idle',
-        lastSeen: new Date().toISOString(),
-        tasksCompleted: 0,
-        accuracy: 0,
+        status,
+        currentActivity: status === 'active' ? 'Executing assigned tasks' : 'Idle',
+        lastSeen: minsAgo === null ? 'no activity yet' : minsAgo === 0 ? 'just now' : `${minsAgo}m ago`,
+        tasksCompleted: taskStats[id].done,
+        accuracy,
         skills: [],
-      }));
+      };
+    });
   } catch (error) {
     console.error('Error fetching agents:', error);
     return [];
@@ -105,7 +146,7 @@ export async function fetchTasks(): Promise<TaskItem[]> {
         const rawStatus = String(t.status || '').toLowerCase().trim();
         const needsInputStatuses = new Set(['needs output', 'needs-output', 'needs_output', 'needs input', 'needs-input', 'needs_input', 'blocked']);
         const doingStatuses = new Set(['claimed', 'in progress', 'in-progress', 'in_progress', 'doing']);
-        const doneStatuses = new Set(['completed', 'complete', 'done']);
+        const doneStatuses = new Set(['completed', 'complete', 'done', 'verified', 'approved', 'closed']);
 
         let column: TaskItem['column'] = 'todo';
         if (doneStatuses.has(rawStatus)) column = 'done';
@@ -136,6 +177,7 @@ export async function fetchTasks(): Promise<TaskItem[]> {
           agentId: String(t.to_agent || 'unknown').toLowerCase().replace(/\s+/g, '-'),
           priority: t.priority || 'medium',
           progress,
+          createdAt: t.created_at || undefined,
           column,
         };
       });

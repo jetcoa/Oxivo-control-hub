@@ -14,6 +14,22 @@ const columns = [
 
 const priorityDot: Record<string, string> = { low: "bg-muted-foreground/50", medium: "bg-amber", high: "bg-primary", urgent: "bg-destructive" };
 
+const formatDubaiTimestamp = (iso?: string) => {
+  if (!iso) return null;
+  const dt = new Date(iso);
+  if (Number.isNaN(dt.getTime())) return null;
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Dubai',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).formatToParts(dt);
+  const get = (type: string) => parts.find((p) => p.type === type)?.value;
+  return `${get('month')}-${get('day')}, ${get('hour')}:${get('minute')}`;
+};
+
 const TaskBoard = () => {
   const { agents, tasks: liveTasks } = useDashboard();
   const [tasks, setTasks] = useState<TaskItem[]>(initialTasks);
@@ -56,7 +72,10 @@ const TaskBoard = () => {
                   whileHover={{ scale: 1.02 }}
                   className="rounded-lg border border-border bg-card/80 p-3 cursor-grab active:cursor-grabbing"
                 >
-                  <p className="text-sm font-medium mb-2">{t.title}</p>
+                  <p className="text-sm font-medium mb-1">{t.title}</p>
+                  {formatDubaiTimestamp(t.createdAt) && (
+                    <p className="mb-2 text-[10px] font-mono text-muted-foreground">{formatDubaiTimestamp(t.createdAt)}</p>
+                  )}
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1.5">
                       <span className="text-sm">{agent.emoji || '🤖'}</span>
