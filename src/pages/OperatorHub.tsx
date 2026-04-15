@@ -4,6 +4,9 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { operatorSupabaseAnonKey as supabaseAnonKey, operatorSupabaseUrl as supabaseUrl } from "@/lib/supabaseOperator";
 
 type QueueView = "New" | "Hot" | "Stuck" | "Overdue";
@@ -138,6 +141,11 @@ const OperatorHub = () => {
   const [leadData, setLeadData] = useState<Record<QueueView, QueueLead[]>>(queueSeed);
   const [selectedLead, setSelectedLead] = useState<QueueLead | null>(null);
   const [refreshTick, setRefreshTick] = useState(0);
+
+  const [reassignTo, setReassignTo] = useState("");
+  const [nextStage, setNextStage] = useState("");
+  const [followupNote, setFollowupNote] = useState("");
+  const [finalOutcome, setFinalOutcome] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -282,14 +290,74 @@ const OperatorHub = () => {
               <CardHeader>
                 <CardTitle>Action Panel</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-2 text-sm">
-                <div className="text-muted-foreground">Webhook action controls to wire:</div>
-                <ul className="list-inside list-disc space-y-1 text-muted-foreground">
-                  <li>Reassign</li>
-                  <li>Change Stage</li>
-                  <li>Trigger Follow-up</li>
-                  <li>Mark as Lost / Won / Nurture</li>
-                </ul>
+              <CardContent className="space-y-4 text-sm">
+                {!selectedLead && <div className="text-muted-foreground">Select a lead to unlock actions.</div>}
+
+                <div className="space-y-2 rounded-md border p-3">
+                  <Label htmlFor="reassign-to">Reassign</Label>
+                  <Input
+                    id="reassign-to"
+                    placeholder="owner name or id"
+                    value={reassignTo}
+                    onChange={(e) => setReassignTo(e.target.value)}
+                    disabled={!selectedLead}
+                  />
+                  <Button size="sm" className="w-full" disabled={!selectedLead || !reassignTo.trim()}>
+                    Reassign Lead
+                  </Button>
+                </div>
+
+                <div className="space-y-2 rounded-md border p-3">
+                  <Label>Change Stage</Label>
+                  <Select value={nextStage} onValueChange={setNextStage} disabled={!selectedLead}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select next stage" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="new_lead">New Lead</SelectItem>
+                      <SelectItem value="contacted">Contacted</SelectItem>
+                      <SelectItem value="qualified">Qualified</SelectItem>
+                      <SelectItem value="stuck">Stuck</SelectItem>
+                      <SelectItem value="nurture">Nurture</SelectItem>
+                      <SelectItem value="converted">Converted</SelectItem>
+                      <SelectItem value="lost">Lost</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Button size="sm" className="w-full" disabled={!selectedLead || !nextStage}>
+                    Apply Stage Change
+                  </Button>
+                </div>
+
+                <div className="space-y-2 rounded-md border p-3">
+                  <Label htmlFor="followup-note">Trigger Follow-up</Label>
+                  <Input
+                    id="followup-note"
+                    placeholder="follow-up note"
+                    value={followupNote}
+                    onChange={(e) => setFollowupNote(e.target.value)}
+                    disabled={!selectedLead}
+                  />
+                  <Button size="sm" className="w-full" disabled={!selectedLead}>
+                    Trigger Follow-up
+                  </Button>
+                </div>
+
+                <div className="space-y-2 rounded-md border p-3">
+                  <Label>Mark as Lost / Won / Nurture</Label>
+                  <Select value={finalOutcome} onValueChange={setFinalOutcome} disabled={!selectedLead}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select final outcome" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="lost">Lost</SelectItem>
+                      <SelectItem value="won">Won</SelectItem>
+                      <SelectItem value="nurture">Nurture</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Button size="sm" variant="secondary" className="w-full" disabled={!selectedLead || !finalOutcome}>
+                    Save Outcome
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           </motion.div>
