@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { operatorSupabaseAnonKey as supabaseAnonKey, operatorSupabaseUrl as supabaseUrl } from "@/lib/supabaseOperator";
 
-type QueueView = "New" | "Hot" | "Stuck" | "Overdue" | "Lost";
+type QueueView = "New" | "Hot" | "Stuck" | "Overdue";
 type QueueState = "loading" | "ready" | "error";
 
 type QueueLead = {
@@ -35,7 +35,7 @@ const WEBHOOKS = {
   nurture: import.meta.env.VITE_WEBHOOK_MARK_NURTURE as string | undefined,
 };
 
-const queueViews: QueueView[] = ["New", "Hot", "Stuck", "Overdue", "Lost"];
+const queueViews: QueueView[] = ["New", "Hot", "Stuck", "Overdue"];
 
 const queueSeed: Record<QueueView, QueueLead[]> = {
   New: [],
@@ -44,7 +44,6 @@ const queueSeed: Record<QueueView, QueueLead[]> = {
     { id: "L-1050", name: "Karla Uy", source: "Messenger", stage: "Needs Reply", owner: "Jet", priority: "Medium", followUpDue: "Overdue 1d", lastAction: "Awaiting response" },
   ],
   Overdue: [],
-  Lost: [],
 };
 
 function normalizePriority(value: unknown): "Low" | "Medium" | "High" {
@@ -70,14 +69,8 @@ function buildQueueQuery(view: QueueView): URLSearchParams {
   }
 
   if (view === "Stuck") {
-    const q = new URLSearchParams({ ...base, current_stage: "not.in.(converted,lost)" });
-    q.append('stuck_reason', 'not.is.null');
-    q.append('stuck_reason', 'neq.');
-    return q;
-  }
-
-  if (view === "Lost") {
-    return new URLSearchParams({ ...base, current_stage: "eq.lost" });
+    // Stage-driven: if lead is explicitly set to stuck, it must appear in Stuck queue.
+    return new URLSearchParams({ ...base, current_stage: "eq.stuck" });
   }
 
   return new URLSearchParams({ ...base, followup_due_at: "lt.NOW()", current_stage: "not.in.(converted,lost,nurture)" });
@@ -281,44 +274,46 @@ const OperatorHub = () => {
                 </div>
                 <Separator />
 
-                {queueState === "loading" && (
-                  <div className="rounded-md border p-4 text-sm text-muted-foreground">Loading {activeView} leads...</div>
-                )}
+                <div className="max-h-[460px] space-y-3 overflow-y-auto pr-1">
+                  {queueState === "loading" && (
+                    <div className="rounded-md border p-4 text-sm text-muted-foreground">Loading {activeView} leads...</div>
+                  )}
 
-                {queueState === "error" && (
-                  <div className="space-y-2 rounded-md border border-destructive/40 bg-destructive/5 p-4 text-sm">
-                    <div className="font-medium text-destructive">Failed to load {activeView} queue.</div>
-                    <div className="text-muted-foreground">{errorMessage}</div>
-                    <Button size="sm" variant="outline" onClick={() => setRefreshTick((n) => n + 1)}>Retry</Button>
-                  </div>
-                )}
+                  {queueState === "error" && (
+                    <div className="space-y-2 rounded-md border border-destructive/40 bg-destructive/5 p-4 text-sm">
+                      <div className="font-medium text-destructive">Failed to load {activeView} queue.</div>
+                      <div className="text-muted-foreground">{errorMessage}</div>
+                      <Button size="sm" variant="outline" onClick={() => setRefreshTick((n) => n + 1)}>Retry</Button>
+                    </div>
+                  )}
 
-                {queueState === "ready" && activeLeads.length === 0 && (
-                  <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
-                    No leads in {activeView} queue.
-                  </div>
-                )}
+                  {queueState === "ready" && activeLeads.length === 0 && (
+                    <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
+                      No leads in {activeView} queue.
+                    </div>
+                  )}
 
-                {queueState === "ready" && activeLeads.length > 0 && (
-                  <div className="space-y-2">
-                    {activeLeads.map((lead) => (
-                      <button
-                        key={lead.id}
-                        className="w-full rounded-md border bg-card p-3 text-left text-sm hover:border-primary/50"
-                        onClick={() => setSelectedLead(lead)}
-                        type="button"
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="font-medium">{lead.name}</div>
-                          <Badge variant="outline">{lead.priority}</Badge>
-                        </div>
-                        <div className="mt-1 text-xs text-muted-foreground">
-                          {lead.source} • {lead.stage} • {lead.owner}
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                )}
+                  {queueState === "ready" && activeLeads.length > 0 && (
+                    <div className="space-y-2">
+                      {activeLeads.map((lead) => (
+                        <button
+                          key={lead.id}
+                          className="w-full rounded-md border bg-card p-3 text-left text-sm hover:border-primary/50"
+                          onClick={() => setSelectedLead(lead)}
+                          type="button"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="font-medium">{lead.name}</div>
+                            <Badge variant="outline">{lead.priority}</Badge>
+                          </div>
+                          <div className="mt-1 text-xs text-muted-foreground">
+                            {lead.source} • {lead.stage} • {lead.owner}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </CardContent>
             </Card>
           </motion.div>
