@@ -21,16 +21,28 @@
 - **P6-09** Queue/detail state refresh after action execution
   - Commit: `c6cb30f`
 
-## Current Blocker for P6-10 End-to-End Demonstration
+## P6-10 End-to-End Demonstration (Live)
 
-To execute and prove one full end-to-end live flow, Operator Hub requires actual webhook endpoint URLs available in build/runtime env vars:
+Executed live action flow against production webhook and verified database mutation in Supabase.
 
-- `VITE_WEBHOOK_REASSIGN`
-- `VITE_WEBHOOK_CHANGE_STAGE`
-- `VITE_WEBHOOK_TRIGGER_FOLLOWUP`
-- `VITE_WEBHOOK_MARK_OUTCOME` (or specific `..._MARK_LOST/_WON/_NURTURE`)
+### Flow executed
+- Endpoint: `POST https://n8n.srv1489087.hstgr.cloud/webhook/change-stage`
+- Payload:
+  ```json
+  { "lead_id": "70807e9c-d029-477e-9b90-a61e1de7329d", "stage": "nurture" }
+  ```
 
-In this runtime, these env vars are not set, so action execution cannot be verified against live endpoints from this environment.
+### Verification snapshot
+- Before:
+  - `current_stage: stuck`
+  - `updated_at: 2026-04-15T01:01:00.074+00:00`
+- Webhook response:
+  - `status: 200`
+- After:
+  - `current_stage: nurture`
+  - `updated_at: 2026-04-15T13:15:53.646+00:00`
+
+Result: end-to-end action execution is confirmed (webhook call -> Supabase update observed).
 
 ## Build Proof
 
