@@ -25,6 +25,16 @@ type QueueLead = {
 
 const ownerNameCache = new Map<string, string>();
 
+const WEBHOOKS = {
+  reassign: import.meta.env.VITE_WEBHOOK_REASSIGN as string | undefined,
+  stage: import.meta.env.VITE_WEBHOOK_CHANGE_STAGE as string | undefined,
+  followup: import.meta.env.VITE_WEBHOOK_TRIGGER_FOLLOWUP as string | undefined,
+  outcome: import.meta.env.VITE_WEBHOOK_MARK_OUTCOME as string | undefined,
+  lost: import.meta.env.VITE_WEBHOOK_MARK_LOST as string | undefined,
+  won: import.meta.env.VITE_WEBHOOK_MARK_WON as string | undefined,
+  nurture: import.meta.env.VITE_WEBHOOK_MARK_NURTURE as string | undefined,
+};
+
 const queueViews: QueueView[] = ["New", "Hot", "Stuck", "Overdue"];
 
 const queueSeed: Record<QueueView, QueueLead[]> = {
@@ -146,6 +156,39 @@ const OperatorHub = () => {
   const [nextStage, setNextStage] = useState("");
   const [followupNote, setFollowupNote] = useState("");
   const [finalOutcome, setFinalOutcome] = useState("");
+  const [actionBusy, setActionBusy] = useState<"reassign" | "stage" | "followup" | "outcome" | null>(null);
+  const [actionMessage, setActionMessage] = useState("");
+
+  const postWebhook = async (url: string | undefined, payload: Record<string, unknown>) => {
+    if (!url) throw new Error("Missing webhook URL for this action.");
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const txt = await res.text();
+      throw new Error(`Webhook failed (${res.status}): ${txt}`);
+    }
+  };
+
+  const runAction = async (
+    action: "reassign" | "stage" | "followup" | "outcome",
+    payload: Record<string, unknown>,
+    endpoint: string | undefined,
+  ) => {
+    try {
+      setActionBusy(action);
+      setActionMessage("");
+      await postWebhook(endpoint, payload);
+      setActionMessage(`${action} action sent successfully.`);
+      setRefreshTick((n) => n + 1);
+    } catch (err: any) {
+      setActionMessage(err?.message || `Failed to run ${action} action.`);
+    } finally {
+      setActionBusy(null);
+    }
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -292,6 +335,7 @@ const OperatorHub = () => {
               </CardHeader>
               <CardContent className="space-y-4 text-sm">
                 {!selectedLead && <div className="text-muted-foreground">Select a lead to unlock actions.</div>}
+                {actionMessage && <div className="rounded-md border p-2 text-xs text-muted-foreground">{actionMessage}</div>}
 
                 <div className="space-y-2 rounded-md border p-3">
                   <Label htmlFor="reassign-to">Reassign</Label>
@@ -302,8 +346,16 @@ const OperatorHub = () => {
                     onChange={(e) => setReassignTo(e.target.value)}
                     disabled={!selectedLead}
                   />
-                  <Button size="sm" className="w-full" disabled={!selectedLead || !reassignTo.trim()}>
-                    Reassign Lead
+                  <Button
+                    size="sm"
+                    className="w-full"
+                    disabled={!selectedLead || !reassignTo.trim() || actionBusy !== null}
+                    onClick={() => selectedLead && runAction('reassign', {
+                      lead_id: selectedLead.id,
+                      reassign_to: reassignTo.trim(),
+                    }, WEBHOOKS.reassign)}
+                  >
+                    {actionBusy === 'reassign' ? 'Sending…' : 'Reassign Lead'}
                   </Button>
                 </div>
 
@@ -323,8 +375,16 @@ const OperatorHub = () => {
                       <SelectItem value="lost">Lost</SelectItem>
                     </SelectContent>
                   </Select>
-                  <Button size="sm" className="w-full" disabled={!selectedLead || !nextStage}>
-                    Apply Stage Change
+                  <Button
+                    size="sm"
+                    className="w-full"
+                    disabled={!selectedLead || !nextStage || actionBusy !== null}
+                    onClick={() => selectedLead && runAction('stage', {
+                      lead_id: selectedLead.id,
+                      stage: nextStage,
+                    }, WEBHOOKS.stage)}
+                  >
+                    {actionBusy === 'stage' ? 'Sending…' : 'Apply Stage Change'}
                   </Button>
                 </div>
 
@@ -337,8 +397,16 @@ const OperatorHub = () => {
                     onChange={(e) => setFollowupNote(e.target.value)}
                     disabled={!selectedLead}
                   />
-                  <Button size="sm" className="w-full" disabled={!selectedLead}>
-                    Trigger Follow-up
+                  <Button
+                    size="sm"
+                    className="w-full"
+                    disabled={!selectedLead || actionBusy !== null}
+                    onClick={() => selectedLead && runAction('followup', {
+                      lead_id: selectedLead.id,
+                      note: followupNote.trim(),
+                    }, WEBHOOKS.followup)}
+                  >
+                    {actionBusy === 'followup' ? 'Sending…' : 'Trigger Follow-up'}
                   </Button>
                 </div>
 
@@ -354,8 +422,23 @@ const OperatorHub = () => {
                       <SelectItem value="nurture">Nurture</SelectItem>
                     </SelectContent>
                   </Select>
-                  <Button size="sm" variant="secondary" className="w-full" disabled={!selectedLead || !finalOutcome}>
-                    Save Outcome
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    className="w-full"
+                    disabled={!selectedLead || !finalOutcome || actionBusy !== null}
+                    onClick={() => {
+                      if (!selectedLead) return;
+                      const outcomeEndpoint =
+                        WEBHOOKS.outcome ||
+                        (finalOutcome === 'lost' ? WEBHOOKS.lost : finalOutcome === 'won' ? WEBHOOKS.won : WEBHOOKS.nurture);
+                      void runAction('outcome', {
+                        lead_id: selectedLead.id,
+                        outcome: finalOutcome,
+                      }, outcomeEndpoint);
+                    }}
+                  >
+                    {actionBusy === 'outcome' ? 'Sending…' : 'Save Outcome'}
                   </Button>
                 </div>
               </CardContent>
