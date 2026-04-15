@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { operatorSupabaseAnonKey as supabaseAnonKey, operatorSupabaseUrl as supabaseUrl } from "@/lib/supabaseOperator";
 
-type QueueView = "New" | "Hot" | "Stuck" | "Overdue";
+type QueueView = "New" | "Hot" | "Stuck" | "Overdue" | "Lost";
 type QueueState = "loading" | "ready" | "error";
 
 type QueueLead = {
@@ -35,7 +35,7 @@ const WEBHOOKS = {
   nurture: import.meta.env.VITE_WEBHOOK_MARK_NURTURE as string | undefined,
 };
 
-const queueViews: QueueView[] = ["New", "Hot", "Stuck", "Overdue"];
+const queueViews: QueueView[] = ["New", "Hot", "Stuck", "Overdue", "Lost"];
 
 const queueSeed: Record<QueueView, QueueLead[]> = {
   New: [],
@@ -44,6 +44,7 @@ const queueSeed: Record<QueueView, QueueLead[]> = {
     { id: "L-1050", name: "Karla Uy", source: "Messenger", stage: "Needs Reply", owner: "Jet", priority: "Medium", followUpDue: "Overdue 1d", lastAction: "Awaiting response" },
   ],
   Overdue: [],
+  Lost: [],
 };
 
 function normalizePriority(value: unknown): "Low" | "Medium" | "High" {
@@ -73,6 +74,10 @@ function buildQueueQuery(view: QueueView): URLSearchParams {
     q.append('stuck_reason', 'not.is.null');
     q.append('stuck_reason', 'neq.');
     return q;
+  }
+
+  if (view === "Lost") {
+    return new URLSearchParams({ ...base, current_stage: "eq.lost" });
   }
 
   return new URLSearchParams({ ...base, followup_due_at: "lt.NOW()", current_stage: "not.in.(converted,lost,nurture)" });
