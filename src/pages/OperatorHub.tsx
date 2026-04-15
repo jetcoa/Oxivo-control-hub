@@ -172,6 +172,23 @@ const OperatorHub = () => {
     }
   };
 
+  const refreshQueues = async (focusView: QueueView, preserveLeadId?: string) => {
+    const views: QueueView[] = ["New", "Hot", "Stuck", "Overdue"];
+    const rowsByView = await Promise.all(views.map((v) => fetchQueueFromSupabase(v)));
+
+    const nextLeadData = views.reduce((acc, v, i) => {
+      acc[v] = rowsByView[i];
+      return acc;
+    }, {} as Record<QueueView, QueueLead[]>);
+
+    setLeadData(nextLeadData);
+
+    const allLeads = views.flatMap((v) => nextLeadData[v]);
+    const preserved = preserveLeadId ? allLeads.find((l) => l.id === preserveLeadId) : null;
+    const focusedFirst = nextLeadData[focusView]?.[0] ?? null;
+    setSelectedLead(preserved ?? focusedFirst ?? null);
+  };
+
   const runAction = async (
     action: "reassign" | "stage" | "followup" | "outcome",
     payload: Record<string, unknown>,
@@ -180,9 +197,10 @@ const OperatorHub = () => {
     try {
       setActionBusy(action);
       setActionMessage("");
+      const currentLeadId = selectedLead?.id;
       await postWebhook(endpoint, payload);
-      setActionMessage(`${action} action sent successfully.`);
-      setRefreshTick((n) => n + 1);
+      await refreshQueues(activeView, currentLeadId);
+      setActionMessage(`${action} action sent successfully and queues refreshed.`);
     } catch (err: any) {
       setActionMessage(err?.message || `Failed to run ${action} action.`);
     } finally {
