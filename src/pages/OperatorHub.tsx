@@ -254,17 +254,23 @@ const OperatorHub = () => {
               <CardHeader>
                 <CardTitle>Lead Detail Panel</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-2 text-sm">
+              <CardContent className="space-y-3 text-sm">
                 {!selectedLead && <div className="text-muted-foreground">Select a lead from queue.</div>}
                 {selectedLead && (
-                  <div className="space-y-2">
-                    <div><span className="text-muted-foreground">name:</span> {selectedLead.name}</div>
-                    <div><span className="text-muted-foreground">source:</span> {selectedLead.source}</div>
-                    <div><span className="text-muted-foreground">stage:</span> {selectedLead.stage}</div>
-                    <div><span className="text-muted-foreground">owner:</span> {selectedLead.owner}</div>
-                    <div><span className="text-muted-foreground">priority:</span> {selectedLead.priority}</div>
-                    <div><span className="text-muted-foreground">follow-up due:</span> {selectedLead.followUpDue}</div>
-                    <div><span className="text-muted-foreground">last action:</span> {selectedLead.lastAction}</div>
+                  <div className="space-y-3">
+                    <div className="rounded-md border p-3">
+                      <div className="text-lg font-semibold leading-tight">{selectedLead.name}</div>
+                      <div className="mt-1 text-xs text-muted-foreground">Lead ID: {selectedLead.id}</div>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-2">
+                      <div className="rounded-md border p-2"><span className="text-muted-foreground">source:</span> {selectedLead.source}</div>
+                      <div className="rounded-md border p-2"><span className="text-muted-foreground">stage:</span> {selectedLead.stage}</div>
+                      <div className="rounded-md border p-2"><span className="text-muted-foreground">owner:</span> {selectedLead.owner}</div>
+                      <div className="rounded-md border p-2"><span className="text-muted-foreground">priority:</span> {selectedLead.priority}</div>
+                      <div className="rounded-md border p-2"><span className="text-muted-foreground">follow-up due:</span> {selectedLead.followUpDue}</div>
+                      <div className="rounded-md border p-2"><span className="text-muted-foreground">last action:</span> {selectedLead.lastAction}</div>
+                    </div>
                   </div>
                 )}
               </CardContent>
