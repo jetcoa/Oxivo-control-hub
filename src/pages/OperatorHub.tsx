@@ -359,7 +359,7 @@ const OperatorHub = () => {
                   <Label htmlFor="reassign-to">Reassign</Label>
                   <Input
                     id="reassign-to"
-                    placeholder="owner name or id"
+                    placeholder="assignee UUID"
                     value={reassignTo}
                     onChange={(e) => setReassignTo(e.target.value)}
                     disabled={!selectedLead}
@@ -370,7 +370,7 @@ const OperatorHub = () => {
                     disabled={!selectedLead || !reassignTo.trim() || actionBusy !== null}
                     onClick={() => selectedLead && runAction('reassign', {
                       lead_id: selectedLead.id,
-                      reassign_to: reassignTo.trim(),
+                      assigned_to: reassignTo.trim(),
                     }, WEBHOOKS.reassign)}
                   >
                     {actionBusy === 'reassign' ? 'Sending…' : 'Reassign Lead'}
