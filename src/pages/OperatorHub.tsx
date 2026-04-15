@@ -52,11 +52,14 @@ function buildQueueQuery(view: QueueView): URLSearchParams {
   }
 
   if (view === "Hot") {
-    return new URLSearchParams({ ...base, priority: "eq.high", current_stage: "not.in.(converted,lost)" });
+    return new URLSearchParams({ ...base, priority: "in.(high,urgent)", current_stage: "not.in.(converted,lost)" });
   }
 
   if (view === "Stuck") {
-    return new URLSearchParams({ ...base, stuck_reason: "not.is.null", current_stage: "not.in.(converted,lost)" });
+    const q = new URLSearchParams({ ...base, current_stage: "not.in.(converted,lost)" });
+    q.append('stuck_reason', 'not.is.null');
+    q.append('stuck_reason', 'neq.');
+    return q;
   }
 
   return new URLSearchParams({ ...base, followup_due_at: "lt.NOW()", current_stage: "not.in.(converted,lost,nurture)" });
