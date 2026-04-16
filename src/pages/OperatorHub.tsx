@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { operatorSupabaseAnonKey as supabaseAnonKey, operatorSupabaseUrl as supabaseUrl } from "@/lib/supabaseOperator";
+import { Info } from "lucide-react";
 
 type QueueView = "New" | "Hot" | "Stuck" | "Overdue";
 type QueueState = "loading" | "ready" | "error";
@@ -23,7 +24,20 @@ type QueueLead = {
   lastAction: string;
 };
 
+type OwnerOption = { id: string; name: string };
+
 const ownerNameCache = new Map<string, string>();
+
+const InfoHint = ({ text }: { text: string }) => (
+  <button
+    type="button"
+    className="inline-flex h-4 w-4 items-center justify-center rounded-full text-muted-foreground hover:text-foreground"
+    title={text}
+    aria-label={text}
+  >
+    <Info size={12} />
+  </button>
+);
 
 const WEBHOOKS = {
   reassign: import.meta.env.VITE_WEBHOOK_REASSIGN as string | undefined,
@@ -109,6 +123,21 @@ async function resolveOwnerNames(ownerIds: string[]): Promise<Map<string, string
   return ownerNameCache;
 }
 
+async function fetchOwnerOptions(): Promise<OwnerOption[]> {
+  const res = await fetch(`${supabaseUrl}/rest/v1/users?select=id,name,full_name,display_name&order=created_at.asc`, {
+    headers: {
+      apikey: supabaseAnonKey,
+      Authorization: `Bearer ${supabaseAnonKey}`,
+      'Content-Type': 'application/json',
+    },
+  });
+  if (!res.ok) throw new Error('Failed to load owners');
+  const rows = (await res.json()) as Array<any>;
+  return rows
+    .filter((r) => r.id)
+    .map((r) => ({ id: r.id, name: r.name || r.full_name || r.display_name || r.id }));
+}
+
 async function fetchQueueFromSupabase(view: QueueView): Promise<QueueLead[]> {
   const query = buildQueueQuery(view);
   const response = await fetch(`${supabaseUrl}/rest/v1/leads?${query.toString()}`, {
@@ -135,7 +164,7 @@ async function fetchQueueFromSupabase(view: QueueView): Promise<QueueLead[]> {
     stage: row.current_stage || "new",
     owner: row.assigned_to ? (ownerMap.get(row.assigned_to) || row.assigned_to) : "unassigned",
     priority: typeof row.priority === 'string'
-      ? (String(row.priority).toLowerCase() === 'high' ? 'High' : String(row.priority).toLowerCase() === 'medium' ? 'Medium' : 'Low')
+      ? (['high', 'urgent'].includes(String(row.priority).toLowerCase()) ? 'High' : ['medium', 'normal'].includes(String(row.priority).toLowerCase()) ? 'Medium' : 'Low')
       : normalizePriority(row.priority),
     followUpDue: row.followup_due_at ? new Date(row.followup_due_at).toLocaleString() : "TBD",
     lastAction: row.stuck_reason || (row.updated_at ? `Updated ${new Date(row.updated_at).toLocaleString()}` : "No action yet"),
@@ -151,6 +180,7 @@ const OperatorHub = () => {
   const [refreshTick, setRefreshTick] = useState(0);
 
   const [reassignTo, setReassignTo] = useState("");
+  const [ownerOptions, setOwnerOptions] = useState<OwnerOption[]>([]);
   const [nextStage, setNextStage] = useState("");
   const [followupNote, setFollowupNote] = useState("");
   const [finalOutcome, setFinalOutcome] = useState("");
@@ -205,6 +235,29 @@ const OperatorHub = () => {
       setActionBusy(null);
     }
   };
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadOwners() {
+      try {
+        const owners = await fetchOwnerOptions();
+        if (!cancelled) setOwnerOptions(owners);
+      } catch {
+        if (!cancelled) setOwnerOptions([]);
+      }
+    }
+
+    void loadOwners();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    const id = window.setInterval(() => setRefreshTick((n) => n + 1), 15000);
+    return () => window.clearInterval(id);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -356,14 +409,20 @@ const OperatorHub = () => {
                 {actionMessage && <div className="rounded-md border p-2 text-xs text-muted-foreground">{actionMessage}</div>}
 
                 <div className="space-y-2 rounded-md border p-3">
-                  <Label htmlFor="reassign-to">Reassign</Label>
-                  <Input
-                    id="reassign-to"
-                    placeholder="assignee UUID"
-                    value={reassignTo}
-                    onChange={(e) => setReassignTo(e.target.value)}
-                    disabled={!selectedLead}
-                  />
+                  <div className="flex items-center gap-1.5">
+                    <Label htmlFor="reassign-to">Reassign</Label>
+                    <InfoHint text="Assign this lead to another owner using their UUID." />
+                  </div>
+                  <Select value={reassignTo} onValueChange={setReassignTo} disabled={!selectedLead || ownerOptions.length === 0}>
+                    <SelectTrigger id="reassign-to">
+                      <SelectValue placeholder={ownerOptions.length ? "Select assignee" : "No owners found"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ownerOptions.map((owner) => (
+                        <SelectItem key={owner.id} value={owner.id}>{owner.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <Button
                     size="sm"
                     className="w-full"
@@ -378,7 +437,10 @@ const OperatorHub = () => {
                 </div>
 
                 <div className="space-y-2 rounded-md border p-3">
-                  <Label>Change Stage</Label>
+                  <div className="flex items-center gap-1.5">
+                    <Label>Change Stage</Label>
+                    <InfoHint text="Move lead through pipeline stages: new, contacted, qualified, or stuck." />
+                  </div>
                   <Select value={nextStage} onValueChange={setNextStage} disabled={!selectedLead}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select next stage" />
@@ -388,9 +450,6 @@ const OperatorHub = () => {
                       <SelectItem value="contacted">Contacted</SelectItem>
                       <SelectItem value="qualified">Qualified</SelectItem>
                       <SelectItem value="stuck">Stuck</SelectItem>
-                      <SelectItem value="nurture">Nurture</SelectItem>
-                      <SelectItem value="converted">Converted</SelectItem>
-                      <SelectItem value="lost">Lost</SelectItem>
                     </SelectContent>
                   </Select>
                   <Button
@@ -407,7 +466,10 @@ const OperatorHub = () => {
                 </div>
 
                 <div className="space-y-2 rounded-md border p-3">
-                  <Label htmlFor="followup-note">Trigger Follow-up</Label>
+                  <div className="flex items-center gap-1.5">
+                    <Label htmlFor="followup-note">Trigger Follow-up</Label>
+                    <InfoHint text="Create/send a follow-up action using your note as context." />
+                  </div>
                   <Input
                     id="followup-note"
                     placeholder="follow-up note"
@@ -429,7 +491,10 @@ const OperatorHub = () => {
                 </div>
 
                 <div className="space-y-2 rounded-md border p-3">
-                  <Label>Mark as Lost / Won / Nurture</Label>
+                  <div className="flex items-center gap-1.5">
+                    <Label>Mark as</Label>
+                    <InfoHint text="Set lead outcome quickly: Lost, Won, or Nurture." />
+                  </div>
                   <Select value={finalOutcome} onValueChange={setFinalOutcome} disabled={!selectedLead}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select final outcome" />
