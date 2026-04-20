@@ -40,6 +40,32 @@ type MasterRecord = {
   updated_at: string | null;
 };
 
+const LIFECYCLE_STAGES = [
+  ['new_lead', 'New Lead'],
+  ['contacted', 'Contacted'],
+  ['qualified', 'Qualified'],
+  ['kyc_started', 'KYC Started'],
+  ['kyc_approved', 'KYC Approved'],
+  ['funded', 'Funded'],
+  ['trading', 'Trading'],
+  ['inactive', 'Inactive'],
+  ['reactivation', 'Reactivation'],
+  ['lost', 'Lost'],
+] as const;
+
+const STAGE_TRANSITIONS: Record<string, string[]> = {
+  new_lead: ['contacted', 'lost'],
+  contacted: ['qualified', 'lost'],
+  qualified: ['kyc_started', 'lost'],
+  kyc_started: ['kyc_approved', 'inactive', 'lost'],
+  kyc_approved: ['funded', 'lost'],
+  funded: ['trading', 'inactive'],
+  trading: ['inactive', 'reactivation'],
+  inactive: ['reactivation', 'lost'],
+  reactivation: ['contacted', 'qualified', 'lost'],
+  lost: ['reactivation', 'new_lead'],
+};
+
 const ownerNameCache = new Map<string, string>();
 
 const InfoHint = ({ text }: { text: string }) => (
@@ -390,6 +416,18 @@ const OperatorHub = () => {
 
   const activeLeads = useMemo(() => leadData[activeView], [activeView, leadData]);
 
+  const selectedStage = String(selectedLead?.stage || '').toLowerCase();
+  const allowedNextStages = (STAGE_TRANSITIONS[selectedStage] || LIFECYCLE_STAGES.map(([v]) => v))
+    .filter((v) => v !== selectedStage);
+
+  const lifecycleCounts = useMemo(() => {
+    const rows = masterRows;
+    const funded = rows.filter((r) => ['funded', 'won', 'funded_client'].includes(String(r.current_stage || '').toLowerCase())).length;
+    const active = rows.filter((r) => ['trading', 'active_trader', 'active'].includes(String(r.current_stage || '').toLowerCase())).length;
+    const inactive = rows.filter((r) => ['inactive', 'dormant', 'reactivation'].includes(String(r.current_stage || '').toLowerCase())).length;
+    return { funded, active, inactive };
+  }, [masterRows]);
+
   const ownerLabel = (ownerId?: string | null) => ownerId ? (ownerOptions.find((o) => o.id === ownerId)?.name || ownerId) : 'unassigned';
   const uniqueSources = Array.from(new Set(masterRows.map((r) => r.source_channel).filter(Boolean))) as string[];
   const uniqueStages = Array.from(new Set(masterRows.map((r) => r.current_stage).filter(Boolean))) as string[];
@@ -463,16 +501,16 @@ const OperatorHub = () => {
             </div>
             <div className="md:col-span-4 grid grid-cols-3 gap-2 text-center">
               <div className="rounded-md border border-white/20 p-2">
-                <div className="text-lg font-semibold">{momentum.actions}</div>
-                <div className="text-xs text-muted-foreground">actions</div>
+                <div className="text-lg font-semibold">{lifecycleCounts.funded}</div>
+                <div className="text-xs text-muted-foreground">funded</div>
               </div>
               <div className="rounded-md border border-white/20 p-2">
-                <div className="text-lg font-semibold">{momentum.followups}</div>
-                <div className="text-xs text-muted-foreground">follow-ups</div>
+                <div className="text-lg font-semibold">{lifecycleCounts.active}</div>
+                <div className="text-xs text-muted-foreground">active</div>
               </div>
               <div className="rounded-md border border-white/20 p-2">
-                <div className="text-lg font-semibold">{momentum.overdueCleared}</div>
-                <div className="text-xs text-muted-foreground">overdue cleared</div>
+                <div className="text-lg font-semibold">{lifecycleCounts.inactive}</div>
+                <div className="text-xs text-muted-foreground">inactive/reactivation</div>
               </div>
             </div>
           </div>
@@ -669,16 +707,11 @@ const OperatorHub = () => {
                       <SelectValue placeholder="Select next stage" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="new_lead">New Lead</SelectItem>
-                      <SelectItem value="contacted">Contacted</SelectItem>
-                      <SelectItem value="qualified">Qualified</SelectItem>
-                      <SelectItem value="kyc_started">KYC Started</SelectItem>
-                      <SelectItem value="kyc_approved">KYC Approved</SelectItem>
-                      <SelectItem value="funded">Funded</SelectItem>
-                      <SelectItem value="trading">Trading</SelectItem>
-                      <SelectItem value="inactive">Inactive</SelectItem>
-                      <SelectItem value="reactivation">Reactivation</SelectItem>
-                      <SelectItem value="lost">Lost</SelectItem>
+                      {LIFECYCLE_STAGES
+                        .filter(([value]) => allowedNextStages.includes(value))
+                        .map(([value, label]) => (
+                          <SelectItem key={value} value={value}>{label}</SelectItem>
+                        ))}
                     </SelectContent>
                   </Select>
                   <Button
