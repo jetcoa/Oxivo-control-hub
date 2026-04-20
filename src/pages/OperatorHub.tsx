@@ -511,6 +511,40 @@ const OperatorHub = () => {
     return Array.from(groups.values()).sort((a, b) => b.assigned - a.assigned);
   }, [masterRows, ownerOptions]);
 
+  const businessMetrics = useMemo(() => {
+    const rows = masterRows;
+    const stageOf = (r: MasterRecord) => String(r.current_stage || '').toLowerCase();
+    const overdue = (r: MasterRecord) => !!r.followup_due_at && new Date(r.followup_due_at).getTime() < Date.now();
+
+    const summary = {
+      newLeads: rows.filter((r) => stageOf(r) === 'new_lead').length,
+      qualified: rows.filter((r) => ['qualified', 'kyc_started', 'kyc_approved'].includes(stageOf(r))).length,
+      funded: rows.filter((r) => ['funded', 'won', 'funded_client'].includes(stageOf(r))).length,
+      active: rows.filter((r) => ['trading', 'active_trader', 'active'].includes(stageOf(r))).length,
+      inactive: rows.filter((r) => ['inactive', 'dormant', 'reactivation'].includes(stageOf(r))).length,
+      overdue: rows.filter((r) => overdue(r)).length,
+      stuck: rows.filter((r) => ['stuck', 'kyc_started', 'reactivation'].includes(stageOf(r))).length,
+    };
+
+    const byOwner = ownerBookRows.slice(0, 6).map((o) => ({ key: o.ownerName, value: o.assigned, leak: o.overdue + o.stuck }));
+
+    const sourceMap: Record<string, number> = {};
+    rows.forEach((r) => {
+      const s = r.source_channel || 'unknown';
+      sourceMap[s] = (sourceMap[s] || 0) + 1;
+    });
+    const bySource = Object.entries(sourceMap).map(([key, value]) => ({ key, value })).sort((a, b) => b.value - a.value).slice(0, 6);
+
+    const stageMap: Record<string, number> = {};
+    rows.forEach((r) => {
+      const s = String(r.current_stage || 'unknown');
+      stageMap[s] = (stageMap[s] || 0) + 1;
+    });
+    const byStage = Object.entries(stageMap).map(([key, value]) => ({ key, value })).sort((a, b) => b.value - a.value).slice(0, 8);
+
+    return { summary, byOwner, bySource, byStage };
+  }, [masterRows, ownerBookRows]);
+
   const stageIn = (stage: string, values: string[]) => values.includes(stage);
 
   const filteredMasterRows = masterRows.filter((r) => {
@@ -606,6 +640,36 @@ const OperatorHub = () => {
                 <div className="text-lg font-semibold">{lifecycleCounts.inactive}</div>
                 <div className="text-xs text-muted-foreground">inactive/reactivation</div>
               </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="premium-glass rounded-xl border border-white/20 px-5 py-4 space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="text-base font-semibold">Business Metrics Layer</div>
+            <div className="text-xs text-muted-foreground">CRM-aligned broker metrics</div>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-2">
+            <div className="rounded-md border border-white/20 p-2"><div className="text-lg font-semibold">{businessMetrics.summary.newLeads}</div><div className="text-xs text-muted-foreground">new leads</div></div>
+            <div className="rounded-md border border-white/20 p-2"><div className="text-lg font-semibold">{businessMetrics.summary.qualified}</div><div className="text-xs text-muted-foreground">qualified</div></div>
+            <div className="rounded-md border border-white/20 p-2"><div className="text-lg font-semibold">{businessMetrics.summary.funded}</div><div className="text-xs text-muted-foreground">funded</div></div>
+            <div className="rounded-md border border-white/20 p-2"><div className="text-lg font-semibold">{businessMetrics.summary.active}</div><div className="text-xs text-muted-foreground">active traders</div></div>
+            <div className="rounded-md border border-white/20 p-2"><div className="text-lg font-semibold">{businessMetrics.summary.inactive}</div><div className="text-xs text-muted-foreground">inactive</div></div>
+            <div className="rounded-md border border-white/20 p-2"><div className="text-lg font-semibold">{businessMetrics.summary.overdue}</div><div className="text-xs text-muted-foreground">overdue follow-ups</div></div>
+            <div className="rounded-md border border-white/20 p-2"><div className="text-lg font-semibold">{businessMetrics.summary.stuck}</div><div className="text-xs text-muted-foreground">stuck prospects</div></div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+            <div className="rounded-md border border-white/20 p-2">
+              <div className="mb-1 font-semibold">By owner / IB</div>
+              {businessMetrics.byOwner.map((x) => <div key={x.key} className="flex justify-between"><span>{x.key}</span><span>{x.value} <span className="text-muted-foreground">(leak {x.leak})</span></span></div>)}
+            </div>
+            <div className="rounded-md border border-white/20 p-2">
+              <div className="mb-1 font-semibold">By source</div>
+              {businessMetrics.bySource.map((x) => <div key={x.key} className="flex justify-between"><span>{x.key}</span><span>{x.value}</span></div>)}
+            </div>
+            <div className="rounded-md border border-white/20 p-2">
+              <div className="mb-1 font-semibold">By stage</div>
+              {businessMetrics.byStage.map((x) => <div key={x.key} className="flex justify-between"><span>{x.key}</span><span>{x.value}</span></div>)}
             </div>
           </div>
         </div>
