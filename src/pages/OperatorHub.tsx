@@ -432,6 +432,56 @@ const OperatorHub = () => {
   const uniqueSources = Array.from(new Set(masterRows.map((r) => r.source_channel).filter(Boolean))) as string[];
   const uniqueStages = Array.from(new Set(masterRows.map((r) => r.current_stage).filter(Boolean))) as string[];
 
+  const ownerBookRows = useMemo(() => {
+    const groups = new Map<string, {
+      ownerId: string;
+      ownerName: string;
+      assigned: number;
+      qualified: number;
+      funded: number;
+      active: number;
+      inactive: number;
+      overdue: number;
+      stuck: number;
+      sources: Record<string, number>;
+    }>();
+
+    for (const r of masterRows) {
+      const ownerId = r.assigned_to || 'unassigned';
+      const ownerName = ownerLabel(r.assigned_to);
+      const stage = String(r.current_stage || '').toLowerCase();
+      const source = r.source_channel || 'unknown';
+      const isOverdue = !!r.followup_due_at && new Date(r.followup_due_at).getTime() < Date.now();
+
+      if (!groups.has(ownerId)) {
+        groups.set(ownerId, {
+          ownerId,
+          ownerName,
+          assigned: 0,
+          qualified: 0,
+          funded: 0,
+          active: 0,
+          inactive: 0,
+          overdue: 0,
+          stuck: 0,
+          sources: {},
+        });
+      }
+
+      const g = groups.get(ownerId)!;
+      g.assigned += 1;
+      if (['qualified', 'kyc_started', 'kyc_approved'].includes(stage)) g.qualified += 1;
+      if (['funded', 'won', 'funded_client'].includes(stage)) g.funded += 1;
+      if (['trading', 'active_trader', 'active'].includes(stage)) g.active += 1;
+      if (['inactive', 'dormant', 'reactivation'].includes(stage)) g.inactive += 1;
+      if (['stuck', 'kyc_started', 'reactivation'].includes(stage)) g.stuck += 1;
+      if (isOverdue) g.overdue += 1;
+      g.sources[source] = (g.sources[source] || 0) + 1;
+    }
+
+    return Array.from(groups.values()).sort((a, b) => b.assigned - a.assigned);
+  }, [masterRows, ownerOptions]);
+
   const stageIn = (stage: string, values: string[]) => values.includes(stage);
 
   const filteredMasterRows = masterRows.filter((r) => {
@@ -546,6 +596,45 @@ const OperatorHub = () => {
               <thead className="bg-black/10 sticky top-0"><tr className="text-left"><th className="p-2">Name</th><th className="p-2">Source</th><th className="p-2">Owner / IB</th><th className="p-2">Stage</th><th className="p-2">Priority</th><th className="p-2">Follow-up</th></tr></thead>
               <tbody>
                 {filteredMasterRows.map((r)=>{const overdue=!!r.followup_due_at && new Date(r.followup_due_at).getTime()<Date.now(); return <tr key={r.id} className="border-t border-white/10"><td className="p-2 font-medium">{r.full_name}</td><td className="p-2">{r.source_channel || '-'}</td><td className="p-2">{ownerLabel(r.assigned_to)}</td><td className="p-2">{r.current_stage || '-'}</td><td className="p-2">{r.priority || '-'}</td><td className="p-2">{overdue ? 'Overdue' : 'On track'}</td></tr>})}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div className="premium-glass rounded-xl border border-white/20 px-5 py-4 space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="text-base font-semibold">Owner Book / IB View</div>
+            <div className="text-xs text-muted-foreground">{ownerBookRows.length} owners</div>
+          </div>
+          <div className="glass-scroll max-h-[260px] overflow-y-auto rounded-md border border-white/20">
+            <table className="w-full text-xs md:text-sm">
+              <thead className="sticky top-0 bg-black/10">
+                <tr className="text-left">
+                  <th className="p-2">Owner / IB</th>
+                  <th className="p-2">Assigned</th>
+                  <th className="p-2">Qualified</th>
+                  <th className="p-2">Funded</th>
+                  <th className="p-2">Active</th>
+                  <th className="p-2">Inactive</th>
+                  <th className="p-2">Overdue</th>
+                  <th className="p-2">Stuck</th>
+                  <th className="p-2">Source Mix</th>
+                </tr>
+              </thead>
+              <tbody>
+                {ownerBookRows.map((o) => (
+                  <tr key={o.ownerId} className="border-t border-white/10">
+                    <td className="p-2 font-medium">{o.ownerName}</td>
+                    <td className="p-2">{o.assigned}</td>
+                    <td className="p-2">{o.qualified}</td>
+                    <td className="p-2">{o.funded}</td>
+                    <td className="p-2">{o.active}</td>
+                    <td className="p-2">{o.inactive}</td>
+                    <td className="p-2">{o.overdue}</td>
+                    <td className="p-2">{o.stuck}</td>
+                    <td className="p-2">{Object.entries(o.sources).sort((a,b)=>b[1]-a[1]).slice(0,2).map(([k,v])=>`${k}:${v}`).join(' · ') || '-'}</td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
