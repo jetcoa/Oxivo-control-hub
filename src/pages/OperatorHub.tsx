@@ -297,6 +297,14 @@ const OperatorHub = () => {
   const [filterFollowup, setFilterFollowup] = useState('all');
   const [masterRows, setMasterRows] = useState<MasterRecord[]>([]);
 
+  const [reactivationOwnerFilter, setReactivationOwnerFilter] = useState('all');
+  const [reactivationNoRecentAction, setReactivationNoRecentAction] = useState(true);
+  const [reactivationNoRecentTrading, setReactivationNoRecentTrading] = useState(true);
+  const [selectedReactivationId, setSelectedReactivationId] = useState<string>('');
+  const [reactivationReassignTo, setReactivationReassignTo] = useState('');
+  const [reactivationPriority, setReactivationPriority] = useState('high');
+  const [reactivationOutcome, setReactivationOutcome] = useState('nurture');
+
   const postWebhook = async (url: string | undefined, payload: Record<string, unknown>) => {
     if (!url) throw new Error("Missing webhook URL for this action.");
     const res = await fetch(url, {
@@ -343,6 +351,27 @@ const OperatorHub = () => {
       setActionMessage(err?.message || `Failed to run ${action} action.`);
     } finally {
       setActionBusy(null);
+    }
+  };
+
+  const tagReactivationPriority = async (leadId: string, priority: string) => {
+    try {
+      setActionMessage('');
+      const res = await fetch(`${supabaseUrl}/rest/v1/leads?id=eq.${leadId}`, {
+        method: 'PATCH',
+        headers: {
+          apikey: supabaseAnonKey,
+          Authorization: `Bearer ${supabaseAnonKey}`,
+          'Content-Type': 'application/json',
+          Prefer: 'return=minimal',
+        },
+        body: JSON.stringify({ priority }),
+      });
+      if (!res.ok) throw new Error('Priority tag update failed');
+      setActionMessage('Priority tag saved.');
+      setRefreshTick((n) => n + 1);
+    } catch (e: any) {
+      setActionMessage(e?.message || 'Priority tag failed.');
     }
   };
 
@@ -519,6 +548,21 @@ const OperatorHub = () => {
     return byView && bySearch && byOwner && bySource && byStage && byPriority && byFollowup;
   });
 
+  const reactivationRows = masterRows.filter((r) => {
+    const stage = String(r.current_stage || '').toLowerCase();
+    const updatedMs = r.updated_at ? new Date(r.updated_at).getTime() : 0;
+    const daysSinceUpdate = updatedMs ? (Date.now() - updatedMs) / (1000 * 60 * 60 * 24) : 999;
+    const noRecentAction = daysSinceUpdate > 7;
+    const noRecentTrading = daysSinceUpdate > 14;
+
+    const baseSegment = ['inactive', 'dormant', 'reactivation', 'funded', 'trading', 'active', 'active_trader'].includes(stage);
+    const byOwner = reactivationOwnerFilter === 'all' || r.assigned_to === reactivationOwnerFilter;
+    const byAction = !reactivationNoRecentAction || noRecentAction;
+    const byTrading = !reactivationNoRecentTrading || noRecentTrading;
+
+    return baseSegment && byOwner && byAction && byTrading;
+  });
+
   return (
     <div className="operator-bg min-h-screen px-4 py-6 md:px-8 lg:px-12">
       <div className="relative z-10 mx-auto max-w-7xl space-y-6">
@@ -637,6 +681,40 @@ const OperatorHub = () => {
                 ))}
               </tbody>
             </table>
+          </div>
+        </div>
+
+        <div className="premium-glass rounded-xl border border-white/20 px-5 py-4 space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="text-base font-semibold">Reactivation Layer</div>
+            <div className="text-xs text-muted-foreground">{reactivationRows.length} candidates</div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
+            <Select value={reactivationOwnerFilter} onValueChange={setReactivationOwnerFilter}><SelectTrigger><SelectValue placeholder="Owner / IB" /></SelectTrigger><SelectContent><SelectItem value="all">All owners</SelectItem>{ownerOptions.map(o=><SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>)}</SelectContent></Select>
+            <Select value={reactivationNoRecentAction ? 'yes' : 'no'} onValueChange={(v)=>setReactivationNoRecentAction(v==='yes')}><SelectTrigger><SelectValue placeholder="No recent action" /></SelectTrigger><SelectContent><SelectItem value="yes">No recent action</SelectItem><SelectItem value="no">Include recent action</SelectItem></SelectContent></Select>
+            <Select value={reactivationNoRecentTrading ? 'yes' : 'no'} onValueChange={(v)=>setReactivationNoRecentTrading(v==='yes')}><SelectTrigger><SelectValue placeholder="No recent trading" /></SelectTrigger><SelectContent><SelectItem value="yes">No recent trading</SelectItem><SelectItem value="no">Include recent trading</SelectItem></SelectContent></Select>
+            <div className="text-xs text-muted-foreground flex items-center">Dormant/inactive recovery segment</div>
+          </div>
+
+          <div className="glass-scroll max-h-[260px] overflow-y-auto rounded-md border border-white/20">
+            <table className="w-full text-xs md:text-sm">
+              <thead className="sticky top-0 bg-black/10"><tr className="text-left"><th className="p-2">Client</th><th className="p-2">Owner</th><th className="p-2">Stage</th><th className="p-2">Follow-up</th><th className="p-2">Reactivation Priority</th></tr></thead>
+              <tbody>
+                {reactivationRows.map((r)=><tr key={r.id} onClick={()=>setSelectedReactivationId(r.id)} className={`border-t border-white/10 cursor-pointer ${selectedReactivationId===r.id?'bg-black/10':''}`}><td className="p-2 font-medium">{r.full_name}</td><td className="p-2">{ownerLabel(r.assigned_to)}</td><td className="p-2">{r.current_stage || '-'}</td><td className="p-2">{r.followup_due_at ? (new Date(r.followup_due_at).getTime() < Date.now() ? 'Overdue' : 'Scheduled') : 'None'}</td><td className="p-2">{String(r.priority || 'medium')}</td></tr>)}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-2 items-end">
+            <Select value={reactivationReassignTo} onValueChange={setReactivationReassignTo}><SelectTrigger><SelectValue placeholder="Reassign if needed" /></SelectTrigger><SelectContent>{ownerOptions.map(o=><SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>)}</SelectContent></Select>
+            <Select value={reactivationPriority} onValueChange={setReactivationPriority}><SelectTrigger><SelectValue placeholder="Priority tagging" /></SelectTrigger><SelectContent><SelectItem value="urgent">Urgent</SelectItem><SelectItem value="high">High</SelectItem><SelectItem value="medium">Medium</SelectItem></SelectContent></Select>
+            <Select value={reactivationOutcome} onValueChange={setReactivationOutcome}><SelectTrigger><SelectValue placeholder="Outcome tracking" /></SelectTrigger><SelectContent><SelectItem value="nurture">Nurture</SelectItem><SelectItem value="won">Won</SelectItem><SelectItem value="lost">Lost</SelectItem></SelectContent></Select>
+            <div className="flex gap-2">
+              <Button size="sm" className="reassign-cta action-cta" disabled={!selectedReactivationId} onClick={()=>selectedReactivationId && runAction('followup',{lead_id:selectedReactivationId,note:'Reactivation follow-up triggered'},WEBHOOKS.followup)}>Follow-up</Button>
+              <Button size="sm" className="reassign-cta action-cta" disabled={!selectedReactivationId || !reactivationReassignTo} onClick={()=>selectedReactivationId && runAction('reassign',{lead_id:selectedReactivationId,assigned_to:reactivationReassignTo},WEBHOOKS.reassign)}>Reassign</Button>
+              <Button size="sm" className="reassign-cta action-cta" disabled={!selectedReactivationId} onClick={()=>selectedReactivationId && tagReactivationPriority(selectedReactivationId, reactivationPriority)}>Tag</Button>
+              <Button size="sm" className="reassign-cta" disabled={!selectedReactivationId} onClick={()=>selectedReactivationId && runAction('outcome',{lead_id:selectedReactivationId,outcome:reactivationOutcome},WEBHOOKS.outcome || (reactivationOutcome==='won'?WEBHOOKS.won:reactivationOutcome==='lost'?WEBHOOKS.lost:WEBHOOKS.nurture))}>Track</Button>
+            </div>
           </div>
         </div>
 
