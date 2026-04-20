@@ -391,18 +391,28 @@ const OperatorHub = () => {
   const uniqueSources = Array.from(new Set(masterRows.map((r) => r.source_channel).filter(Boolean))) as string[];
   const uniqueStages = Array.from(new Set(masterRows.map((r) => r.current_stage).filter(Boolean))) as string[];
 
+  const stageIn = (stage: string, values: string[]) => values.includes(stage);
+
   const filteredMasterRows = masterRows.filter((r) => {
     const stage = String(r.current_stage || '').toLowerCase();
     const priority = String(r.priority || '').toLowerCase();
     const isOverdue = !!r.followup_due_at && new Date(r.followup_due_at).getTime() < Date.now();
 
+    const stageMap = {
+      qualified: ['qualified'],
+      funded: ['funded', 'won', 'funded_client'],
+      active: ['active_trader', 'trading', 'active'],
+      inactive: ['inactive', 'dormant'],
+      nurture_lost: ['nurture', 'lost'],
+    } as const;
+
     const byView =
       masterView === 'all' ? true :
-      masterView === 'qualified' ? stage === 'qualified' :
-      masterView === 'funded' ? stage === 'funded' || stage === 'won' :
-      masterView === 'active' ? stage === 'active_trader' || stage === 'trading' :
-      masterView === 'inactive' ? stage === 'inactive' || stage === 'dormant' :
-      stage === 'nurture' || stage === 'lost';
+      masterView === 'qualified' ? stageIn(stage, stageMap.qualified) :
+      masterView === 'funded' ? stageIn(stage, stageMap.funded) :
+      masterView === 'active' ? stageIn(stage, stageMap.active) :
+      masterView === 'inactive' ? stageIn(stage, stageMap.inactive) :
+      stageIn(stage, stageMap.nurture_lost);
 
     const search = masterSearch.trim().toLowerCase();
     const bySearch = !search || [r.full_name, r.source_channel, ownerLabel(r.assigned_to), r.current_stage, isOverdue ? 'overdue' : 'ontrack']
