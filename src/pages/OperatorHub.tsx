@@ -93,15 +93,18 @@ function buildQueueQuery(view: QueueView): URLSearchParams {
   }
 
   if (view === "Hot") {
-    return new URLSearchParams({ ...base, priority: "in.(high,urgent)", current_stage: "not.in.(converted,lost)" });
+    return new URLSearchParams({
+      ...base,
+      priority: "in.(high,urgent)",
+      current_stage: "in.(contacted,qualified,kyc_started,kyc_approved,reactivation)",
+    });
   }
 
   if (view === "Stuck") {
-    // Stage-driven: if lead is explicitly set to stuck, it must appear in Stuck queue.
-    return new URLSearchParams({ ...base, current_stage: "eq.stuck" });
+    return new URLSearchParams({ ...base, current_stage: "in.(kyc_started,inactive,reactivation)" });
   }
 
-  return new URLSearchParams({ ...base, followup_due_at: "lt.NOW()", current_stage: "not.in.(converted,lost)" });
+  return new URLSearchParams({ ...base, followup_due_at: "lt.NOW()", current_stage: "not.in.(lost,trading,funded,won)" });
 }
 
 async function resolveOwnerNames(ownerIds: string[]): Promise<Map<string, string>> {
@@ -399,10 +402,10 @@ const OperatorHub = () => {
     const isOverdue = !!r.followup_due_at && new Date(r.followup_due_at).getTime() < Date.now();
 
     const stageMap = {
-      qualified: ['qualified'],
+      qualified: ['qualified', 'kyc_started', 'kyc_approved'],
       funded: ['funded', 'won', 'funded_client'],
-      active: ['active_trader', 'trading', 'active'],
-      inactive: ['inactive', 'dormant'],
+      active: ['trading', 'active_trader', 'active'],
+      inactive: ['inactive', 'dormant', 'reactivation'],
       nurture_lost: ['nurture', 'lost'],
     } as const;
 
@@ -669,7 +672,13 @@ const OperatorHub = () => {
                       <SelectItem value="new_lead">New Lead</SelectItem>
                       <SelectItem value="contacted">Contacted</SelectItem>
                       <SelectItem value="qualified">Qualified</SelectItem>
-                      <SelectItem value="stuck">Stuck</SelectItem>
+                      <SelectItem value="kyc_started">KYC Started</SelectItem>
+                      <SelectItem value="kyc_approved">KYC Approved</SelectItem>
+                      <SelectItem value="funded">Funded</SelectItem>
+                      <SelectItem value="trading">Trading</SelectItem>
+                      <SelectItem value="inactive">Inactive</SelectItem>
+                      <SelectItem value="reactivation">Reactivation</SelectItem>
+                      <SelectItem value="lost">Lost</SelectItem>
                     </SelectContent>
                   </Select>
                   <Button
