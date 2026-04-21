@@ -290,7 +290,15 @@ async function fetchQueueFromSupabase(view: QueueView): Promise<QueueLead[]> {
       const isOverdue = dueMs > 0 && dueMs < nowMs;
       const minutesSinceUpdate = updatedMs > 0 ? (nowMs - updatedMs) / 60000 : 99999;
       const inCooldown = minutesSinceUpdate >= 0 && minutesSinceUpdate < COOLDOWN_MINUTES;
-      const priorityScore = String(row.priority || '').toLowerCase() === 'urgent' ? 20 : String(row.priority || '').toLowerCase() === 'high' ? 12 : 6;
+
+      const rawPriority = row.priority;
+      const p = String(rawPriority ?? '').toLowerCase();
+      const priorityScore =
+        p.includes('urgent') ? 20 :
+        p.includes('high') ? 16 :
+        p.includes('medium') || p.includes('normal') ? 10 :
+        (typeof rawPriority === 'number' ? (rawPriority >= 2 ? 16 : rawPriority === 1 ? 10 : 6) : 6);
+
       const stage = String(row.current_stage || '').toLowerCase();
       const stageScore = stage === 'stuck' ? 22 : stage === 'reactivation' ? 16 : stage === 'kyc_started' ? 12 : stage === 'inactive' ? 10 : 4;
       const overdueScore = isOverdue ? 30 : 0;
