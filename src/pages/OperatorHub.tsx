@@ -650,7 +650,6 @@ const OperatorHub = () => {
                 <div className="h-2 bg-[#8fb446]" style={{ width: `${momentum.momentumPercent}%` }} />
                 <div className="h-2 bg-[#b8d965]" style={{ width: `${momentum.reachPercent}%` }} />
               </div>
-              <div className="mt-2 text-xs text-muted-foreground">Today’s 3 Moves · Moves {momentum.moves}/8 · Replies {momentum.replies}/3 · Overdue Fixed {momentum.overdueFixed}/2 · Reach Outs {momentum.reachOuts}/3</div>
             </div>
             <div className="md:col-span-4 grid grid-cols-3 gap-2 text-center">
               <div className="rounded-md border border-white/20 p-2">
@@ -667,6 +666,11 @@ const OperatorHub = () => {
               </div>
             </div>
           </div>
+        </div>
+
+        <div className="premium-glass rounded-xl border border-white/20 px-5 py-3">
+          <div className="text-xs font-medium text-muted-foreground">Today’s 3 Moves · Playbook</div>
+          <div className="mt-1 text-sm">Moves <span className="font-semibold">{momentum.moves}/8</span> · Replies <span className="font-semibold">{momentum.replies}/3</span> · Overdue Fixed <span className="font-semibold">{momentum.overdueFixed}/2</span> · Reach Outs <span className="font-semibold">{momentum.reachOuts}/3</span></div>
         </div>
 
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-12">
