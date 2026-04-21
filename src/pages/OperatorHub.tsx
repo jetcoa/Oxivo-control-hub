@@ -473,13 +473,18 @@ const OperatorHub = () => {
   const allowedNextStages = (STAGE_TRANSITIONS[selectedStage] || LIFECYCLE_STAGES.map(([v]) => v))
     .filter((v) => v !== selectedStage);
 
-  const lifecycleCounts = useMemo(() => {
-    const rows = masterRows;
-    const funded = rows.filter((r) => ['funded', 'won', 'funded_client'].includes(String(r.current_stage || '').toLowerCase())).length;
-    const active = rows.filter((r) => ['trading', 'active_trader', 'active'].includes(String(r.current_stage || '').toLowerCase())).length;
-    const inactive = rows.filter((r) => ['inactive', 'dormant', 'reactivation'].includes(String(r.current_stage || '').toLowerCase())).length;
-    return { funded, active, inactive };
-  }, [masterRows]);
+  const workloadToday = useMemo(() => {
+    const newCount = leadData.New.length;
+    const hotCount = leadData.Hot.length;
+    const stuckCount = leadData.Stuck.length;
+    const overdueCount = leadData.Overdue.length;
+
+    return {
+      actionsNeeded: newCount + hotCount,
+      followUps: hotCount + overdueCount,
+      atRisk: stuckCount + overdueCount,
+    };
+  }, [leadData]);
 
   const ownerLabel = (ownerId?: string | null) => ownerId ? (ownerOptions.find((o) => o.id === ownerId)?.name || ownerId) : 'unassigned';
   const uniqueSources = Array.from(new Set(masterRows.map((r) => r.source_channel).filter(Boolean))) as string[];
@@ -669,16 +674,16 @@ const OperatorHub = () => {
             </div>
             <div className="md:col-span-4 grid grid-cols-3 gap-2 text-center">
               <div className="rounded-md border border-white/20 p-2">
-                <div className="text-lg font-semibold">{lifecycleCounts.funded}</div>
-                <div className="text-xs text-muted-foreground">funded</div>
+                <div className="text-lg font-semibold">{workloadToday.actionsNeeded}</div>
+                <div className="text-xs text-muted-foreground">actions needed</div>
               </div>
               <div className="rounded-md border border-white/20 p-2">
-                <div className="text-lg font-semibold">{lifecycleCounts.active}</div>
-                <div className="text-xs text-muted-foreground">active</div>
+                <div className="text-lg font-semibold">{workloadToday.followUps}</div>
+                <div className="text-xs text-muted-foreground">follow-ups today</div>
               </div>
               <div className="rounded-md border border-white/20 p-2">
-                <div className="text-lg font-semibold">{lifecycleCounts.inactive}</div>
-                <div className="text-xs text-muted-foreground">inactive/reactivation</div>
+                <div className="text-lg font-semibold">{workloadToday.atRisk}</div>
+                <div className="text-xs text-muted-foreground">at risk / overdue</div>
               </div>
             </div>
           </div>
