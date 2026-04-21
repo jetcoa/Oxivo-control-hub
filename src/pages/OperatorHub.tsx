@@ -426,7 +426,7 @@ const OperatorHub = () => {
   };
 
   const setLeadFollowupDueAt = async (leadId: string, dueAtLocal: string) => {
-    if (!dueAtLocal) return;
+    if (!dueAtLocal) return '';
     const iso = new Date(dueAtLocal).toISOString();
     const res = await fetch(`${supabaseUrl}/rest/v1/leads?id=eq.${leadId}`, {
       method: 'PATCH',
@@ -439,6 +439,7 @@ const OperatorHub = () => {
       body: JSON.stringify({ followup_due_at: iso }),
     });
     if (!res.ok) throw new Error('Failed to set follow-up due date/time');
+    return iso;
   };
 
   useEffect(() => {
@@ -996,19 +997,26 @@ const OperatorHub = () => {
                           setActionBusy('followup');
                           setActionMessage('');
 
+                          let savedIso = '';
                           if (followupDueAt) {
-                            await setLeadFollowupDueAt(selectedLead.id, followupDueAt);
+                            savedIso = await setLeadFollowupDueAt(selectedLead.id, followupDueAt);
+                            if (savedIso) {
+                              setSelectedLead((prev) => prev && prev.id === selectedLead.id
+                                ? { ...prev, followUpDue: new Date(savedIso).toLocaleString(), lastAction: `Updated ${new Date().toLocaleString()}` }
+                                : prev);
+                            }
                           }
 
                           if (WEBHOOKS.followup) {
                             await postWebhook(WEBHOOKS.followup, {
                               lead_id: selectedLead.id,
                               note: followupNote.trim(),
-                              followup_due_at: followupDueAt ? new Date(followupDueAt).toISOString() : undefined,
+                              followup_due_at: savedIso || (followupDueAt ? new Date(followupDueAt).toISOString() : undefined),
                             });
                           }
 
                           await refreshQueues(activeView, selectedLead.id);
+                          setFollowupDueAt('');
                           setActionMessage(WEBHOOKS.followup ? 'Follow-up triggered and due date saved.' : 'Due date saved (no follow-up webhook configured).');
                         } catch (e: any) {
                           setActionMessage(e?.message || 'Failed to trigger follow-up.');
