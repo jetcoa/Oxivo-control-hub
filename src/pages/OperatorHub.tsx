@@ -732,25 +732,22 @@ const OperatorHub = () => {
               <p className="text-xs text-muted-foreground">One action keeps it moving.</p>
             </div>
             <div className="md:col-span-5">
-              <div className="mb-2 flex items-center justify-between text-xs font-medium">
-                <span>Today’s progress</span>
-                <div className="flex items-center gap-2">
-                  <span className="rounded-md border border-[#8ea24a]/35 bg-[#2f3012]/80 px-2 py-0.5 text-[#b8d965]">70% Momentum</span>
-                  <span className="rounded-md border border-[#8ea24a]/35 bg-[#2f3012]/80 px-2 py-0.5 text-[#e3c54d]">30% Outreach</span>
+              <div className="mb-1 text-xs font-medium">Today’s progress</div>
+              <div className="relative mt-6">
+                <div className="pointer-events-none absolute -top-6 left-0 right-0">
+                  <span
+                    className="absolute rounded-md border border-[#8ea24a]/35 bg-[#2f3012]/80 px-2 py-0.5 text-xs text-[#b8d965]"
+                    style={{ left: `${Math.max(12, momentum.momentumPercent)}%`, transform: 'translateX(-100%)' }}
+                  >
+                    70% Momentum
+                  </span>
+                  <span className="absolute right-0 rounded-md border border-[#8ea24a]/35 bg-[#2f3012]/80 px-2 py-0.5 text-xs text-[#e3c54d]">
+                    30% Outreach
+                  </span>
                 </div>
-              </div>
-              <div className="flex h-3 w-full rounded-full bg-black/25 overflow-hidden border border-white/10">
-                <div className="h-3 bg-[#b8d965]" style={{ width: `${momentum.momentumPercent}%` }} />
-                <div className="h-3 bg-[#e3c54d]" style={{ width: `${momentum.reachPercent}%` }} />
-              </div>
-              <div className="mt-2 grid grid-cols-2 text-center text-xs">
-                <div>
-                  <div className="text-lg font-semibold">{momentum.momentumPercent}%</div>
-                  <div className="text-muted-foreground">Momentum</div>
-                </div>
-                <div>
-                  <div className="text-lg font-semibold">{momentum.reachPercent}%</div>
-                  <div className="text-muted-foreground">New Reach Outs</div>
+                <div className="flex h-3 w-full overflow-hidden rounded-full border border-white/10 bg-black/25">
+                  <div className="h-3 bg-[#b8d965]" style={{ width: `${momentum.momentumPercent}%` }} />
+                  <div className="h-3 bg-[#e3c54d]" style={{ width: `${momentum.reachPercent}%` }} />
                 </div>
               </div>
             </div>
