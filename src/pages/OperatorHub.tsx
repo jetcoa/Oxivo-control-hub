@@ -333,6 +333,7 @@ const OperatorHub = () => {
   const [ownerOptions, setOwnerOptions] = useState<OwnerOption[]>([]);
   const [nextStage, setNextStage] = useState("");
   const [followupNote, setFollowupNote] = useState("");
+  const [followupDueAt, setFollowupDueAt] = useState("");
   const [finalOutcome, setFinalOutcome] = useState("");
   const [actionBusy, setActionBusy] = useState<"reassign" | "stage" | "followup" | "outcome" | null>(null);
   const [actionMessage, setActionMessage] = useState("");
@@ -422,6 +423,22 @@ const OperatorHub = () => {
     } catch (e: any) {
       setActionMessage(e?.message || 'Priority tag failed.');
     }
+  };
+
+  const setLeadFollowupDueAt = async (leadId: string, dueAtLocal: string) => {
+    if (!dueAtLocal) return;
+    const iso = new Date(dueAtLocal).toISOString();
+    const res = await fetch(`${supabaseUrl}/rest/v1/leads?id=eq.${leadId}`, {
+      method: 'PATCH',
+      headers: {
+        apikey: supabaseAnonKey,
+        Authorization: `Bearer ${supabaseAnonKey}`,
+        'Content-Type': 'application/json',
+        Prefer: 'return=minimal',
+      },
+      body: JSON.stringify({ followup_due_at: iso }),
+    });
+    if (!res.ok) throw new Error('Failed to set follow-up due date/time');
   };
 
   useEffect(() => {
@@ -957,14 +974,38 @@ const OperatorHub = () => {
                     onChange={(e) => setFollowupNote(e.target.value)}
                     disabled={!selectedLead}
                   />
+                  <div className="space-y-1">
+                    <Label htmlFor="followup-due-at">Follow-up Due At</Label>
+                    <Input
+                      id="followup-due-at"
+                      type="datetime-local"
+                      className="glass-carved-field reassign-outline bg-[#dcedb4] text-[#2c3a16] dark:bg-transparent dark:text-slate-100"
+                      value={followupDueAt}
+                      onChange={(e) => setFollowupDueAt(e.target.value)}
+                      disabled={!selectedLead}
+                    />
+                  </div>
                   <Button
                     size="sm"
                     className="reassign-cta action-cta w-full font-semibold"
                     disabled={!selectedLead || actionBusy !== null}
-                    onClick={() => selectedLead && runAction('followup', {
-                      lead_id: selectedLead.id,
-                      note: followupNote.trim(),
-                    }, WEBHOOKS.followup)}
+                    onClick={() => {
+                      if (!selectedLead) return;
+                      void (async () => {
+                        try {
+                          if (followupDueAt) {
+                            await setLeadFollowupDueAt(selectedLead.id, followupDueAt);
+                          }
+                          await runAction('followup', {
+                            lead_id: selectedLead.id,
+                            note: followupNote.trim(),
+                            followup_due_at: followupDueAt ? new Date(followupDueAt).toISOString() : undefined,
+                          }, WEBHOOKS.followup);
+                        } catch (e: any) {
+                          setActionMessage(e?.message || 'Failed to trigger follow-up.');
+                        }
+                      })();
+                    }}
                   >
                     {actionBusy === 'followup' ? 'Sending…' : 'Trigger Follow-up'}
                   </Button>
