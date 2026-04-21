@@ -118,26 +118,26 @@ function normalizePriority(value: unknown): "Low" | "Medium" | "High" {
 function buildQueueQuery(view: QueueView): URLSearchParams {
   const base = {
     select: "id,full_name,source_channel,current_stage,assigned_to,priority,followup_due_at,stuck_reason,created_at,updated_at",
-    order: "created_at.desc",
     limit: "25",
   } as Record<string, string>;
 
   if (view === "New") {
-    return new URLSearchParams({ ...base, current_stage: "eq.new_lead" });
+    return new URLSearchParams({ ...base, order: "created_at.asc", current_stage: "eq.new_lead" });
   }
 
   if (view === "Hot") {
     return new URLSearchParams({
       ...base,
+      order: "updated_at.asc",
       current_stage: "in.(contacted,qualified,kyc_started,kyc_approved,reactivation)",
     });
   }
 
   if (view === "Stuck") {
-    return new URLSearchParams({ ...base, current_stage: "in.(stuck,kyc_started,inactive,reactivation)" });
+    return new URLSearchParams({ ...base, order: "updated_at.asc", current_stage: "in.(stuck,kyc_started,inactive,reactivation)" });
   }
 
-  return new URLSearchParams({ ...base, followup_due_at: "lt.NOW()", current_stage: "not.in.(lost,trading,funded,won)" });
+  return new URLSearchParams({ ...base, order: "followup_due_at.asc", followup_due_at: "lt.NOW()", current_stage: "not.in.(lost,trading,funded,won)" });
 }
 
 async function resolveOwnerNames(ownerIds: string[]): Promise<Map<string, string>> {
