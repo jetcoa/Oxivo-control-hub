@@ -797,16 +797,7 @@ const OperatorHub = () => {
               <div className="flex items-center gap-1 text-xs font-semibold text-[#e3c54d]">Complete the day <InfoHint text="Unlocks after Momentum reaches 70% (70% left)" /></div>
               <div className="mt-1 text-sm text-muted-foreground">New Reach Outs</div>
               <div className={`mt-1 text-3xl font-semibold ${momentum.reachOuts === 0 ? '' : 'text-[#e3c54d]'}`}>{momentum.reachOuts}<span className="text-lg text-[#e3c54d]">/3</span></div>
-              <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-black/20">
-                <div
-                  className="h-2 rounded-full bg-[#e3c54d]"
-                  style={{
-                    width: `${Math.round((momentum.reachOuts / 3) * 100)}%`,
-                    opacity: momentum.reachOuts === 0 ? 0.2 : momentum.reachOuts === 1 ? 0.55 : momentum.reachOuts === 2 ? 0.85 : 1,
-                  }}
-                />
-              </div>
-              <div className="mt-1 text-xs text-muted-foreground">Unlocks after Momentum reaches 70% ({Math.max(0, 70 - momentum.momentumPercent)}% left)</div>
+              <div className="mt-1 text-xs text-muted-foreground">{momentum.reachOuts >= 3 ? 'Day complete at 100%' : `${3 - momentum.reachOuts} more to complete the day`}</div>
             </div>
           </div>
         </div>
