@@ -693,26 +693,26 @@ const OperatorHub = () => {
           <div className="grid grid-cols-1 gap-2 md:grid-cols-4">
             <div className="rounded-lg border border-white/20 p-3">
               <div className="flex items-center gap-1 text-xs text-muted-foreground">Today’s Moves (Actions) <InfoHint text="Counts any logged action completed today." /></div>
-              <div className="mt-1 text-3xl font-semibold">{momentum.moves}<span className="text-lg text-muted-foreground">/8</span></div>
+              <div className="mt-1 text-3xl font-semibold">{momentum.moves}<span className="text-lg text-[#b8d965]">/8</span></div>
               <div className="mt-1 text-xs text-muted-foreground">{Math.max(0, 8 - momentum.moves)} more to target</div>
             </div>
 
             <div className="rounded-lg border border-white/20 p-3">
               <div className="flex items-center gap-1 text-xs text-muted-foreground">Replies Sent (Follow-ups) <InfoHint text="Counts follow-up completed today." /></div>
-              <div className="mt-1 text-3xl font-semibold">{momentum.replies}<span className="text-lg text-muted-foreground">/3</span></div>
+              <div className="mt-1 text-3xl font-semibold">{momentum.replies}<span className="text-lg text-[#b8d965]">/3</span></div>
               <div className="mt-1 text-xs text-muted-foreground">{momentum.replies >= 3 ? 'Target met' : `${3 - momentum.replies} more to target`}</div>
             </div>
 
             <div className="rounded-lg border border-white/20 p-3">
               <div className="flex items-center gap-1 text-xs text-muted-foreground">Overdue Fixed <InfoHint text="Counts leads that leave overdue status today." /></div>
-              <div className="mt-1 text-3xl font-semibold">{momentum.overdueFixed}<span className="text-lg text-muted-foreground">/2</span></div>
+              <div className="mt-1 text-3xl font-semibold">{momentum.overdueFixed}<span className="text-lg text-[#b8d965]">/2</span></div>
               <div className="mt-1 text-xs text-muted-foreground">{momentum.overdueFixed >= 2 ? 'Target met' : `${2 - momentum.overdueFixed} more to target`}</div>
             </div>
 
             <div className="rounded-lg border border-white/20 p-3">
               <div className="flex items-center gap-1 text-xs font-semibold text-[#e3c54d]">Complete the day <InfoHint text="Unlocks after Momentum reaches 70% (70% left)" /></div>
               <div className="mt-1 text-sm text-muted-foreground">New Reach Outs</div>
-              <div className="mt-1 text-3xl font-semibold text-[#e3c54d]">{momentum.reachOuts}<span className="text-lg text-[#e3c54d]">/3</span></div>
+              <div className={`mt-1 text-3xl font-semibold ${momentum.reachOuts === 0 ? '' : 'text-[#e3c54d]'}`}>{momentum.reachOuts}<span className="text-lg text-[#e3c54d]">/3</span></div>
               <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-black/20">
                 <div
                   className="h-2 rounded-full bg-[#e3c54d]"
