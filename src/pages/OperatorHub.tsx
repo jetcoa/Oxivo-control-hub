@@ -278,10 +278,36 @@ async function fetchQueueFromSupabase(view: QueueView): Promise<QueueLead[]> {
   }
 
   const rows = (await response.json()) as Array<any>;
-  const ownerIds = Array.from(new Set(rows.map((r) => r.assigned_to).filter(Boolean)));
+
+  // Time-based requeue + urgency scoring:
+  // recently touched leads are deprioritized so operators cycle through unresolved work first.
+  const COOLDOWN_MINUTES = 120;
+  const nowMs = Date.now();
+  const scoredRows = rows
+    .map((row) => {
+      const updatedMs = row.updated_at ? new Date(row.updated_at).getTime() : 0;
+      const dueMs = row.followup_due_at ? new Date(row.followup_due_at).getTime() : 0;
+      const isOverdue = dueMs > 0 && dueMs < nowMs;
+      const minutesSinceUpdate = updatedMs > 0 ? (nowMs - updatedMs) / 60000 : 99999;
+      const inCooldown = minutesSinceUpdate >= 0 && minutesSinceUpdate < COOLDOWN_MINUTES;
+      const priorityScore = String(row.priority || '').toLowerCase() === 'urgent' ? 20 : String(row.priority || '').toLowerCase() === 'high' ? 12 : 6;
+      const stage = String(row.current_stage || '').toLowerCase();
+      const stageScore = stage === 'stuck' ? 22 : stage === 'reactivation' ? 16 : stage === 'kyc_started' ? 12 : stage === 'inactive' ? 10 : 4;
+      const overdueScore = isOverdue ? 30 : 0;
+      const cooldownPenalty = inCooldown ? 40 : 0;
+      const urgency = priorityScore + stageScore + overdueScore - cooldownPenalty;
+      return { row, urgency, updatedMs, inCooldown };
+    })
+    .sort((a, b) => {
+      if (a.urgency !== b.urgency) return b.urgency - a.urgency;
+      return a.updatedMs - b.updatedMs;
+    })
+    .map((x) => x.row);
+
+  const ownerIds = Array.from(new Set(scoredRows.map((r) => r.assigned_to).filter(Boolean)));
   const ownerMap = await resolveOwnerNames(ownerIds as string[]);
 
-  return rows.map((row) => ({
+  return scoredRows.map((row) => ({
     id: row.id,
     name: row.full_name || "Untitled lead",
     source: row.source_channel || "Unknown",
