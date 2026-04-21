@@ -442,6 +442,26 @@ const OperatorHub = () => {
     return iso;
   };
 
+  const lockLeadFollowupDueAt = async (leadId: string, dueAtLocal: string) => {
+    const iso = await setLeadFollowupDueAt(leadId, dueAtLocal);
+    const retryDelays = [1500, 4000];
+    retryDelays.forEach((delay) => {
+      window.setTimeout(() => {
+        void fetch(`${supabaseUrl}/rest/v1/leads?id=eq.${leadId}`, {
+          method: 'PATCH',
+          headers: {
+            apikey: supabaseAnonKey,
+            Authorization: `Bearer ${supabaseAnonKey}`,
+            'Content-Type': 'application/json',
+            Prefer: 'return=minimal',
+          },
+          body: JSON.stringify({ followup_due_at: iso }),
+        });
+      }, delay);
+    });
+    return iso;
+  };
+
   useEffect(() => {
     let cancelled = false;
 
@@ -999,7 +1019,7 @@ const OperatorHub = () => {
 
                           let savedIso = '';
                           if (followupDueAt) {
-                            savedIso = await setLeadFollowupDueAt(selectedLead.id, followupDueAt);
+                            savedIso = await lockLeadFollowupDueAt(selectedLead.id, followupDueAt);
                             if (savedIso) {
                               setSelectedLead((prev) => prev && prev.id === selectedLead.id
                                 ? { ...prev, followUpDue: new Date(savedIso).toLocaleString(), lastAction: `Updated ${new Date().toLocaleString()}` }
@@ -1016,7 +1036,7 @@ const OperatorHub = () => {
 
                           // Enforce selected future due date after webhook side-effects.
                           if (followupDueAt) {
-                            savedIso = await setLeadFollowupDueAt(selectedLead.id, followupDueAt);
+                            savedIso = await lockLeadFollowupDueAt(selectedLead.id, followupDueAt);
                           }
 
                           await refreshQueues(activeView, selectedLead.id);
