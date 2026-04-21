@@ -478,10 +478,21 @@ const OperatorHub = () => {
     const stuckCount = leadData.Stuck.length;
     const overdueCount = leadData.Overdue.length;
 
+    const uniqueActionIds = new Set<string>([
+      ...leadData.New.map((l) => l.id),
+      ...leadData.Hot.map((l) => l.id),
+      ...leadData.Stuck.map((l) => l.id),
+      ...leadData.Overdue.map((l) => l.id),
+    ]);
+
     return {
-      actionsNeeded: newCount + hotCount + stuckCount + overdueCount,
+      actionsNeeded: uniqueActionIds.size,
       followUps: momentum.replies,
-      atRisk: stuckCount + overdueCount,
+      atRisk: new Set<string>([
+        ...leadData.Stuck.map((l) => l.id),
+        ...leadData.Overdue.map((l) => l.id),
+      ]).size,
+      queueTotals: { newCount, hotCount, stuckCount, overdueCount },
     };
   }, [leadData, momentum.replies]);
 
