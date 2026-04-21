@@ -129,13 +129,12 @@ function buildQueueQuery(view: QueueView): URLSearchParams {
   if (view === "Hot") {
     return new URLSearchParams({
       ...base,
-      priority: "in.(high,urgent)",
       current_stage: "in.(contacted,qualified,kyc_started,kyc_approved,reactivation)",
     });
   }
 
   if (view === "Stuck") {
-    return new URLSearchParams({ ...base, current_stage: "in.(kyc_started,inactive,reactivation)" });
+    return new URLSearchParams({ ...base, current_stage: "in.(stuck,kyc_started,inactive,reactivation)" });
   }
 
   return new URLSearchParams({ ...base, followup_due_at: "lt.NOW()", current_stage: "not.in.(lost,trading,funded,won)" });
