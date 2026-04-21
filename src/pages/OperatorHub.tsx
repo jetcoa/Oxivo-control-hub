@@ -367,8 +367,8 @@ const OperatorHub = () => {
   const [masterRows, setMasterRows] = useState<MasterRecord[]>([]);
 
   const [reactivationOwnerFilter, setReactivationOwnerFilter] = useState('all');
-  const [reactivationNoRecentAction, setReactivationNoRecentAction] = useState(true);
-  const [reactivationNoRecentTrading, setReactivationNoRecentTrading] = useState(true);
+  const [reactivationNoRecentAction, setReactivationNoRecentAction] = useState(false);
+  const [reactivationNoRecentTrading, setReactivationNoRecentTrading] = useState(false);
   const [selectedReactivationId, setSelectedReactivationId] = useState<string>('');
   const [reactivationReassignTo, setReactivationReassignTo] = useState('');
   const [reactivationPriority, setReactivationPriority] = useState('high');
@@ -718,7 +718,8 @@ const OperatorHub = () => {
     const baseSegment = ['inactive', 'dormant', 'reactivation', 'funded', 'trading', 'active', 'active_trader'].includes(stage);
     const byOwner = reactivationOwnerFilter === 'all' || r.assigned_to === reactivationOwnerFilter;
     const byAction = !reactivationNoRecentAction || noRecentAction;
-    const byTrading = !reactivationNoRecentTrading || noRecentTrading;
+    const tradingSensitive = ['funded', 'trading', 'active', 'active_trader'].includes(stage);
+    const byTrading = !reactivationNoRecentTrading || !tradingSensitive || noRecentTrading;
 
     return baseSegment && byOwner && byAction && byTrading;
   });
