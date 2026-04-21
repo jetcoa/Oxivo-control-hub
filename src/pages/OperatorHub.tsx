@@ -645,10 +645,26 @@ const OperatorHub = () => {
               <p className="text-xs text-muted-foreground">One action keeps it moving.</p>
             </div>
             <div className="md:col-span-5">
-              <div className="mb-1 text-xs font-medium">Today’s progress</div>
-              <div className="flex h-2 w-full rounded-full bg-black/20 overflow-hidden">
-                <div className="h-2 bg-[#8fb446]" style={{ width: `${momentum.momentumPercent}%` }} />
-                <div className="h-2 bg-[#b8d965]" style={{ width: `${momentum.reachPercent}%` }} />
+              <div className="mb-2 flex items-center justify-between text-xs font-medium">
+                <span>Today’s progress</span>
+                <div className="flex items-center gap-2">
+                  <span className="rounded-md border border-[#8ea24a]/35 bg-[#2f3012]/80 px-2 py-0.5 text-[#b8d965]">70% Momentum</span>
+                  <span className="rounded-md border border-[#8ea24a]/35 bg-[#2f3012]/80 px-2 py-0.5 text-[#e3c54d]">30% Outreach</span>
+                </div>
+              </div>
+              <div className="flex h-3 w-full rounded-full bg-black/25 overflow-hidden border border-white/10">
+                <div className="h-3 bg-[#b8d965]" style={{ width: `${momentum.momentumPercent}%` }} />
+                <div className="h-3 bg-[#e3c54d]" style={{ width: `${momentum.reachPercent}%` }} />
+              </div>
+              <div className="mt-2 grid grid-cols-2 text-center text-xs">
+                <div>
+                  <div className="text-lg font-semibold">{momentum.momentumPercent}%</div>
+                  <div className="text-muted-foreground">Momentum</div>
+                </div>
+                <div>
+                  <div className="text-lg font-semibold">{momentum.reachPercent}%</div>
+                  <div className="text-muted-foreground">New Reach Outs</div>
+                </div>
               </div>
             </div>
             <div className="md:col-span-4 grid grid-cols-3 gap-2 text-center">
@@ -694,11 +710,17 @@ const OperatorHub = () => {
             </div>
 
             <div className="rounded-lg border border-white/20 p-3">
-              <div className="flex items-center gap-1 text-xs font-semibold">Complete the day <InfoHint text="Unlocks after Momentum reaches 70% (70% left)" /></div>
+              <div className="flex items-center gap-1 text-xs font-semibold text-[#e3c54d]">Complete the day <InfoHint text="Unlocks after Momentum reaches 70% (70% left)" /></div>
               <div className="mt-1 text-sm text-muted-foreground">New Reach Outs</div>
-              <div className="mt-1 text-3xl font-semibold">{momentum.reachOuts}<span className="text-lg text-muted-foreground">/3</span></div>
+              <div className="mt-1 text-3xl font-semibold text-[#e3c54d]">{momentum.reachOuts}<span className="text-lg text-[#e3c54d]">/3</span></div>
               <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-black/20">
-                <div className="h-2 rounded-full bg-[#b8d965]" style={{ width: `${Math.round((momentum.reachOuts / 3) * 100)}%` }} />
+                <div
+                  className="h-2 rounded-full bg-[#e3c54d]"
+                  style={{
+                    width: `${Math.round((momentum.reachOuts / 3) * 100)}%`,
+                    opacity: momentum.reachOuts === 0 ? 0.2 : momentum.reachOuts === 1 ? 0.55 : momentum.reachOuts === 2 ? 0.85 : 1,
+                  }}
+                />
               </div>
               <div className="mt-1 text-xs text-muted-foreground">Unlocks after Momentum reaches 70% ({Math.max(0, 70 - momentum.momentumPercent)}% left)</div>
             </div>
