@@ -389,7 +389,10 @@ const OperatorHub = () => {
 
   const refreshQueues = async (focusView: QueueView, preserveLeadId?: string) => {
     const views: QueueView[] = ["New", "Hot", "Stuck", "Overdue"];
-    const rowsByView = await Promise.all(views.map((v) => fetchQueueFromSupabase(v)));
+    const [rowsByView, latestMaster] = await Promise.all([
+      Promise.all(views.map((v) => fetchQueueFromSupabase(v))),
+      fetchMasterList(),
+    ]);
 
     const nextLeadData = views.reduce((acc, v, i) => {
       acc[v] = rowsByView[i];
@@ -397,6 +400,7 @@ const OperatorHub = () => {
     }, {} as Record<QueueView, QueueLead[]>);
 
     setLeadData(nextLeadData);
+    setMasterRows(latestMaster);
 
     const allLeads = views.flatMap((v) => nextLeadData[v]);
     const preserved = preserveLeadId ? allLeads.find((l) => l.id === preserveLeadId) : null;
