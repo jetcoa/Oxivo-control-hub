@@ -293,20 +293,29 @@ async function fetchQueueFromSupabase(view: QueueView): Promise<QueueLead[]> {
 
       const rawPriority = row.priority;
       const p = String(rawPriority ?? '').toLowerCase();
+      const isUrgent = p.includes('urgent') || (typeof rawPriority === 'number' && rawPriority >= 3);
+      const isHigh = p.includes('high') || (typeof rawPriority === 'number' && rawPriority === 2);
       const priorityScore =
-        p.includes('urgent') ? 20 :
-        p.includes('high') ? 16 :
-        p.includes('medium') || p.includes('normal') ? 10 :
-        (typeof rawPriority === 'number' ? (rawPriority >= 2 ? 16 : rawPriority === 1 ? 10 : 6) : 6);
+        isUrgent ? 55 :
+        isHigh ? 40 :
+        (p.includes('medium') || p.includes('normal') || (typeof rawPriority === 'number' && rawPriority === 1)) ? 16 : 8;
 
       const stage = String(row.current_stage || '').toLowerCase();
       const stageScore = stage === 'stuck' ? 22 : stage === 'reactivation' ? 16 : stage === 'kyc_started' ? 12 : stage === 'inactive' ? 10 : 4;
       const overdueScore = isOverdue ? 30 : 0;
-      const cooldownPenalty = inCooldown ? 40 : 0;
+      const cooldownPenalty = inCooldown ? (isUrgent ? 8 : isHigh ? 15 : 40) : 0;
       const urgency = priorityScore + stageScore + overdueScore - cooldownPenalty;
       return { row, urgency, updatedMs, inCooldown };
     })
     .sort((a, b) => {
+      const ap = String(a.row.priority ?? '').toLowerCase();
+      const bp = String(b.row.priority ?? '').toLowerCase();
+      const aBand = ap.includes('urgent') ? 3 : ap.includes('high') ? 2 : 1;
+      const bBand = bp.includes('urgent') ? 3 : bp.includes('high') ? 2 : 1;
+
+      // Strict pin: urgent/high always above non-high regardless of cooldown.
+      if (aBand !== bBand) return bBand - aBand;
+
       if (a.urgency !== b.urgency) return b.urgency - a.urgency;
       return a.updatedMs - b.updatedMs;
     })
@@ -776,25 +785,25 @@ const OperatorHub = () => {
 
           <div className="grid grid-cols-1 gap-2 md:grid-cols-4">
             <div className="rounded-lg border border-white/20 p-3">
-              <div className="flex items-center gap-1 text-xs text-muted-foreground">Today’s Moves (Actions) <InfoHint text="Counts any logged action completed today." /></div>
+              <div className="flex items-center gap-1 text-xs text-muted-foreground"><span className="font-semibold text-[#b8d965]">Today’s Moves</span> (Actions) <InfoHint text="Counts any logged action completed today." /></div>
               <div className="mt-1 text-3xl font-semibold">{momentum.moves}<span className="text-lg text-[#b8d965]">/8</span></div>
               <div className="mt-1 text-xs text-muted-foreground">{Math.max(0, 8 - momentum.moves)} more to target</div>
             </div>
 
             <div className="rounded-lg border border-white/20 p-3">
-              <div className="flex items-center gap-1 text-xs text-muted-foreground">Replies Sent (Follow-ups) <InfoHint text="Counts follow-up completed today." /></div>
+              <div className="flex items-center gap-1 text-xs text-muted-foreground"><span className="font-semibold text-[#b8d965]">Replies Sent</span> (Follow-ups) <InfoHint text="Counts follow-up completed today." /></div>
               <div className="mt-1 text-3xl font-semibold">{momentum.replies}<span className="text-lg text-[#b8d965]">/3</span></div>
               <div className="mt-1 text-xs text-muted-foreground">{momentum.replies >= 3 ? 'Target met' : `${3 - momentum.replies} more to target`}</div>
             </div>
 
             <div className="rounded-lg border border-white/20 p-3">
-              <div className="flex items-center gap-1 text-xs text-muted-foreground">Overdue Fixed <InfoHint text="Counts leads that leave overdue status today." /></div>
+              <div className="flex items-center gap-1 text-xs text-muted-foreground"><span className="font-semibold text-[#b8d965]">Overdue Fixed</span> <InfoHint text="Counts leads that leave overdue status today." /></div>
               <div className="mt-1 text-3xl font-semibold">{momentum.overdueFixed}<span className="text-lg text-[#b8d965]">/2</span></div>
               <div className="mt-1 text-xs text-muted-foreground">{momentum.overdueFixed >= 2 ? 'Target met' : `${2 - momentum.overdueFixed} more to target`}</div>
             </div>
 
             <div className="rounded-lg border border-white/20 p-3">
-              <div className="flex items-center gap-1 text-xs font-semibold text-[#e3c54d]">Complete the day (Outreach) <InfoHint text="Counts outbound to new prospects only." /></div>
+              <div className="flex items-center gap-1 text-xs text-[#e3c54d]"><span className="font-semibold">Complete the day</span> <span className="text-muted-foreground">(Outreach)</span> <InfoHint text="Counts outbound to new prospects only." /></div>
               <div className={`mt-2 text-3xl font-semibold ${momentum.reachOuts === 0 ? '' : 'text-[#e3c54d]'}`}>{momentum.reachOuts}<span className="text-lg text-[#e3c54d]">/3</span></div>
               <div className="mt-1 text-xs text-muted-foreground">{momentum.reachOuts >= 3 ? 'Day complete at 100%' : `${3 - momentum.reachOuts} more to complete the day`}</div>
             </div>
