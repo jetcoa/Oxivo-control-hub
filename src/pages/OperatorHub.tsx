@@ -794,9 +794,8 @@ const OperatorHub = () => {
             </div>
 
             <div className="rounded-lg border border-white/20 p-3">
-              <div className="flex items-center gap-1 text-xs font-semibold text-[#e3c54d]">Complete the day <InfoHint text="Unlocks after Momentum reaches 70% (70% left)" /></div>
-              <div className="mt-1 text-sm text-muted-foreground">New Reach Outs</div>
-              <div className={`mt-1 text-3xl font-semibold ${momentum.reachOuts === 0 ? '' : 'text-[#e3c54d]'}`}>{momentum.reachOuts}<span className="text-lg text-[#e3c54d]">/3</span></div>
+              <div className="flex items-center gap-1 text-xs font-semibold text-[#e3c54d]">Complete the day (Outreach) <InfoHint text="Counts outbound to new prospects only." /></div>
+              <div className={`mt-2 text-3xl font-semibold ${momentum.reachOuts === 0 ? '' : 'text-[#e3c54d]'}`}>{momentum.reachOuts}<span className="text-lg text-[#e3c54d]">/3</span></div>
               <div className="mt-1 text-xs text-muted-foreground">{momentum.reachOuts >= 3 ? 'Day complete at 100%' : `${3 - momentum.reachOuts} more to complete the day`}</div>
             </div>
           </div>
