@@ -1011,13 +1011,17 @@ const OperatorHub = () => {
                             await postWebhook(WEBHOOKS.followup, {
                               lead_id: selectedLead.id,
                               note: followupNote.trim(),
-                              followup_due_at: savedIso || (followupDueAt ? new Date(followupDueAt).toISOString() : undefined),
                             });
+                          }
+
+                          // Enforce selected future due date after webhook side-effects.
+                          if (followupDueAt) {
+                            savedIso = await setLeadFollowupDueAt(selectedLead.id, followupDueAt);
                           }
 
                           await refreshQueues(activeView, selectedLead.id);
                           setFollowupDueAt('');
-                          setActionMessage(WEBHOOKS.followup ? 'Follow-up triggered and due date saved.' : 'Due date saved (no follow-up webhook configured).');
+                          setActionMessage(WEBHOOKS.followup ? 'Follow-up triggered and future due date locked.' : 'Due date saved (no follow-up webhook configured).');
                         } catch (e: any) {
                           setActionMessage(e?.message || 'Failed to trigger follow-up.');
                         } finally {
