@@ -120,21 +120,23 @@ function buildQueueQuery(view: QueueView): URLSearchParams {
     select: "id,full_name,source_channel,current_stage,assigned_to,priority,followup_due_at,stuck_reason,created_at,updated_at",
     limit: "25",
   } as Record<string, string>;
+  const twentyFourHoursAgoIso = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
   if (view === "New") {
-    return new URLSearchParams({ ...base, order: "created_at.asc", current_stage: "eq.new_lead" });
+    return new URLSearchParams({ ...base, order: "created_at.desc", created_at: `gte.${twentyFourHoursAgoIso}` });
   }
 
   if (view === "Hot") {
     return new URLSearchParams({
       ...base,
       order: "updated_at.asc",
+      created_at: `lt.${twentyFourHoursAgoIso}`,
       current_stage: "in.(contacted,qualified,kyc_started,kyc_approved,reactivation)",
     });
   }
 
   if (view === "Stuck") {
-    return new URLSearchParams({ ...base, order: "updated_at.asc", current_stage: "in.(stuck,kyc_started,inactive,reactivation)" });
+    return new URLSearchParams({ ...base, order: "updated_at.asc", created_at: `lt.${twentyFourHoursAgoIso}`, current_stage: "in.(stuck,kyc_started,inactive,reactivation)" });
   }
 
   return new URLSearchParams({ ...base, order: "followup_due_at.asc", followup_due_at: "lt.NOW()", current_stage: "not.in.(lost,trading,funded,won)" });
@@ -196,19 +198,19 @@ async function fetchOwnerOptions(): Promise<OwnerOption[]> {
 
 async function fetchMomentumStats(): Promise<MomentumStats> {
   const now = new Date();
-  const startUtc = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())).toISOString();
+  const windowStartIso = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
 
   const [leadUpdatesRes, followupsRes, overdueFixedRes, reachOutsRes] = await Promise.all([
-    fetch(`${supabaseUrl}/rest/v1/leads?select=id&updated_at=gte.${encodeURIComponent(startUtc)}`, {
+    fetch(`${supabaseUrl}/rest/v1/leads?select=id&updated_at=gte.${encodeURIComponent(windowStartIso)}`, {
       headers: { apikey: supabaseAnonKey, Authorization: `Bearer ${supabaseAnonKey}` },
     }),
-    fetch(`${supabaseUrl}/rest/v1/follow_up_tasks?select=id&created_at=gte.${encodeURIComponent(startUtc)}`, {
+    fetch(`${supabaseUrl}/rest/v1/follow_up_tasks?select=id&created_at=gte.${encodeURIComponent(windowStartIso)}`, {
       headers: { apikey: supabaseAnonKey, Authorization: `Bearer ${supabaseAnonKey}` },
     }),
-    fetch(`${supabaseUrl}/rest/v1/leads?select=id&updated_at=gte.${encodeURIComponent(startUtc)}&followup_due_at=gt.now()`, {
+    fetch(`${supabaseUrl}/rest/v1/leads?select=id&updated_at=gte.${encodeURIComponent(windowStartIso)}&followup_due_at=gt.now()`, {
       headers: { apikey: supabaseAnonKey, Authorization: `Bearer ${supabaseAnonKey}` },
     }),
-    fetch(`${supabaseUrl}/rest/v1/leads?select=id&created_at=gte.${encodeURIComponent(startUtc)}&current_stage=eq.new_lead`, {
+    fetch(`${supabaseUrl}/rest/v1/leads?select=id&created_at=gte.${encodeURIComponent(windowStartIso)}`, {
       headers: { apikey: supabaseAnonKey, Authorization: `Bearer ${supabaseAnonKey}` },
     }),
   ]);
