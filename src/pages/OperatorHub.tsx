@@ -480,10 +480,10 @@ const OperatorHub = () => {
 
     return {
       actionsNeeded: newCount + hotCount + stuckCount + overdueCount,
-      followUps: hotCount + overdueCount,
+      followUps: momentum.replies,
       atRisk: stuckCount + overdueCount,
     };
-  }, [leadData]);
+  }, [leadData, momentum.replies]);
 
   const ownerLabel = (ownerId?: string | null) => ownerId ? (ownerOptions.find((o) => o.id === ownerId)?.name || ownerId) : 'unassigned';
   const uniqueSources = Array.from(new Set(masterRows.map((r) => r.source_channel).filter(Boolean))) as string[];
