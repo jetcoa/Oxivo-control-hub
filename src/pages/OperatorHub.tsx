@@ -479,7 +479,7 @@ const OperatorHub = () => {
     const overdueCount = leadData.Overdue.length;
 
     return {
-      actionsNeeded: newCount + hotCount,
+      actionsNeeded: newCount + hotCount + stuckCount + overdueCount,
       followUps: hotCount + overdueCount,
       atRisk: stuckCount + overdueCount,
     };
