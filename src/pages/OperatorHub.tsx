@@ -993,16 +993,27 @@ const OperatorHub = () => {
                       if (!selectedLead) return;
                       void (async () => {
                         try {
+                          setActionBusy('followup');
+                          setActionMessage('');
+
                           if (followupDueAt) {
                             await setLeadFollowupDueAt(selectedLead.id, followupDueAt);
                           }
-                          await runAction('followup', {
-                            lead_id: selectedLead.id,
-                            note: followupNote.trim(),
-                            followup_due_at: followupDueAt ? new Date(followupDueAt).toISOString() : undefined,
-                          }, WEBHOOKS.followup);
+
+                          if (WEBHOOKS.followup) {
+                            await postWebhook(WEBHOOKS.followup, {
+                              lead_id: selectedLead.id,
+                              note: followupNote.trim(),
+                              followup_due_at: followupDueAt ? new Date(followupDueAt).toISOString() : undefined,
+                            });
+                          }
+
+                          await refreshQueues(activeView, selectedLead.id);
+                          setActionMessage(WEBHOOKS.followup ? 'Follow-up triggered and due date saved.' : 'Due date saved (no follow-up webhook configured).');
                         } catch (e: any) {
                           setActionMessage(e?.message || 'Failed to trigger follow-up.');
+                        } finally {
+                          setActionBusy(null);
                         }
                       })();
                     }}
