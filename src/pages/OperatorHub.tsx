@@ -27,7 +27,15 @@ type QueueLead = {
 };
 
 type OwnerOption = { id: string; name: string; role?: string; ibType?: string; parentId?: string | null };
-type MomentumStats = { percent: number; actions: number; target: number; followups: number; overdueCleared: number };
+type MomentumStats = {
+  percent: number;
+  moves: number;
+  replies: number;
+  overdueFixed: number;
+  reachOuts: number;
+  momentumPercent: number;
+  reachPercent: number;
+};
 type MasterView = 'all' | 'qualified' | 'funded' | 'active' | 'inactive' | 'nurture_lost';
 type MasterRecord = {
   id: string;
@@ -188,11 +196,10 @@ async function fetchOwnerOptions(): Promise<OwnerOption[]> {
 }
 
 async function fetchMomentumStats(): Promise<MomentumStats> {
-  const target = 12;
   const now = new Date();
   const startUtc = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())).toISOString();
 
-  const [leadUpdatesRes, followupsRes, clearedRes] = await Promise.all([
+  const [leadUpdatesRes, followupsRes, overdueFixedRes, reachOutsRes] = await Promise.all([
     fetch(`${supabaseUrl}/rest/v1/leads?select=id&updated_at=gte.${encodeURIComponent(startUtc)}`, {
       headers: { apikey: supabaseAnonKey, Authorization: `Bearer ${supabaseAnonKey}` },
     }),
@@ -202,27 +209,44 @@ async function fetchMomentumStats(): Promise<MomentumStats> {
     fetch(`${supabaseUrl}/rest/v1/leads?select=id&updated_at=gte.${encodeURIComponent(startUtc)}&followup_due_at=gt.now()`, {
       headers: { apikey: supabaseAnonKey, Authorization: `Bearer ${supabaseAnonKey}` },
     }),
+    fetch(`${supabaseUrl}/rest/v1/leads?select=id&created_at=gte.${encodeURIComponent(startUtc)}&current_stage=eq.new_lead`, {
+      headers: { apikey: supabaseAnonKey, Authorization: `Bearer ${supabaseAnonKey}` },
+    }),
   ]);
 
-  if (!leadUpdatesRes.ok || !followupsRes.ok || !clearedRes.ok) {
+  if (!leadUpdatesRes.ok || !followupsRes.ok || !overdueFixedRes.ok || !reachOutsRes.ok) {
     throw new Error('Failed to load momentum stats');
   }
 
-  const [leadUpdates, followups, cleared] = await Promise.all([
+  const [leadUpdates, followups, overdueFixedRows, reachOutRows] = await Promise.all([
     leadUpdatesRes.json() as Promise<any[]>,
     followupsRes.json() as Promise<any[]>,
-    clearedRes.json() as Promise<any[]>,
+    overdueFixedRes.json() as Promise<any[]>,
+    reachOutsRes.json() as Promise<any[]>,
   ]);
 
-  const actions = (leadUpdates?.length || 0) + (followups?.length || 0);
-  const percent = Math.min(100, Math.round((actions / target) * 100));
+  const movesRaw = leadUpdates?.length || 0;
+  const repliesRaw = followups?.length || 0;
+  const overdueRaw = overdueFixedRows?.length || 0;
+  const reachRaw = reachOutRows?.length || 0;
+
+  const moves = Math.min(8, movesRaw);
+  const replies = Math.min(3, repliesRaw);
+  const overdueFixed = Math.min(2, overdueRaw);
+  const reachOuts = Math.min(3, reachRaw);
+
+  const momentumPercent = ((moves / 8) + (replies / 3) + (overdueFixed / 2)) / 3 * 70;
+  const reachPercent = momentumPercent >= 70 ? (reachOuts / 3) * 30 : 0;
+  const percent = Math.min(100, Math.round(momentumPercent + reachPercent));
 
   return {
     percent,
-    actions,
-    target,
-    followups: followups?.length || 0,
-    overdueCleared: cleared?.length || 0,
+    moves,
+    replies,
+    overdueFixed,
+    reachOuts,
+    momentumPercent: Math.min(70, Math.round(momentumPercent)),
+    reachPercent: Math.round(reachPercent),
   };
 }
 
@@ -287,7 +311,7 @@ const OperatorHub = () => {
   const [finalOutcome, setFinalOutcome] = useState("");
   const [actionBusy, setActionBusy] = useState<"reassign" | "stage" | "followup" | "outcome" | null>(null);
   const [actionMessage, setActionMessage] = useState("");
-  const [momentum, setMomentum] = useState<MomentumStats>({ percent: 58, actions: 7, target: 12, followups: 4, overdueCleared: 2 });
+  const [momentum, setMomentum] = useState<MomentumStats>({ percent: 0, moves: 0, replies: 0, overdueFixed: 0, reachOuts: 0, momentumPercent: 0, reachPercent: 0 });
   const [masterView, setMasterView] = useState<MasterView>('all');
   const [masterSearch, setMasterSearch] = useState('');
   const [filterOwner, setFilterOwner] = useState('all');
@@ -622,10 +646,11 @@ const OperatorHub = () => {
             </div>
             <div className="md:col-span-5">
               <div className="mb-1 text-xs font-medium">Today’s progress</div>
-              <div className="h-2 w-full rounded-full bg-black/20">
-                <div className="h-2 rounded-full bg-[#b8d965]" style={{ width: `${momentum.percent}%` }} />
+              <div className="flex h-2 w-full rounded-full bg-black/20 overflow-hidden">
+                <div className="h-2 bg-[#8fb446]" style={{ width: `${momentum.momentumPercent}%` }} />
+                <div className="h-2 bg-[#b8d965]" style={{ width: `${momentum.reachPercent}%` }} />
               </div>
-              <div className="mt-1 text-xs text-muted-foreground">{momentum.percent}% · {momentum.actions} / {momentum.target} actions</div>
+              <div className="mt-2 text-xs text-muted-foreground">Today’s 3 Moves · Moves {momentum.moves}/8 · Replies {momentum.replies}/3 · Overdue Fixed {momentum.overdueFixed}/2 · Reach Outs {momentum.reachOuts}/3</div>
             </div>
             <div className="md:col-span-4 grid grid-cols-3 gap-2 text-center">
               <div className="rounded-md border border-white/20 p-2">
@@ -640,144 +665,6 @@ const OperatorHub = () => {
                 <div className="text-lg font-semibold">{lifecycleCounts.inactive}</div>
                 <div className="text-xs text-muted-foreground">inactive/reactivation</div>
               </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="premium-glass rounded-xl border border-white/20 px-5 py-4 space-y-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="text-base font-semibold">Business Metrics Layer</div>
-            <div className="text-xs text-muted-foreground">CRM-aligned broker metrics</div>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-2">
-            <div className="rounded-md border border-white/20 p-2"><div className="text-lg font-semibold">{businessMetrics.summary.newLeads}</div><div className="text-xs text-muted-foreground">new leads</div></div>
-            <div className="rounded-md border border-white/20 p-2"><div className="text-lg font-semibold">{businessMetrics.summary.qualified}</div><div className="text-xs text-muted-foreground">qualified</div></div>
-            <div className="rounded-md border border-white/20 p-2"><div className="text-lg font-semibold">{businessMetrics.summary.funded}</div><div className="text-xs text-muted-foreground">funded</div></div>
-            <div className="rounded-md border border-white/20 p-2"><div className="text-lg font-semibold">{businessMetrics.summary.active}</div><div className="text-xs text-muted-foreground">active traders</div></div>
-            <div className="rounded-md border border-white/20 p-2"><div className="text-lg font-semibold">{businessMetrics.summary.inactive}</div><div className="text-xs text-muted-foreground">inactive</div></div>
-            <div className="rounded-md border border-white/20 p-2"><div className="text-lg font-semibold">{businessMetrics.summary.overdue}</div><div className="text-xs text-muted-foreground">overdue follow-ups</div></div>
-            <div className="rounded-md border border-white/20 p-2"><div className="text-lg font-semibold">{businessMetrics.summary.stuck}</div><div className="text-xs text-muted-foreground">stuck prospects</div></div>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
-            <div className="rounded-md border border-white/20 p-2">
-              <div className="mb-1 font-semibold">By owner / IB</div>
-              {businessMetrics.byOwner.map((x) => <div key={x.key} className="flex justify-between"><span>{x.key}</span><span>{x.value} <span className="text-muted-foreground">(leak {x.leak})</span></span></div>)}
-            </div>
-            <div className="rounded-md border border-white/20 p-2">
-              <div className="mb-1 font-semibold">By source</div>
-              {businessMetrics.bySource.map((x) => <div key={x.key} className="flex justify-between"><span>{x.key}</span><span>{x.value}</span></div>)}
-            </div>
-            <div className="rounded-md border border-white/20 p-2">
-              <div className="mb-1 font-semibold">By stage</div>
-              {businessMetrics.byStage.map((x) => <div key={x.key} className="flex justify-between"><span>{x.key}</span><span>{x.value}</span></div>)}
-            </div>
-          </div>
-        </div>
-
-        <div className="premium-glass rounded-xl border border-white/20 px-5 py-4 space-y-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="text-base font-semibold">Master List / Full CRM View</div>
-            <div className="text-xs text-muted-foreground">{filteredMasterRows.length} records</div>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {([
-              ['all','All Leads'],
-              ['qualified','Qualified'],
-              ['funded','Funded'],
-              ['active','Active Traders'],
-              ['inactive','Inactive / Dormant'],
-              ['nurture_lost','Nurture / Lost'],
-            ] as Array<[MasterView,string]>).map(([k,label]) => (
-              <Button key={k} size="sm" variant="outline" className={masterView===k? 'queue-tab-active' : 'border-[#8ea24a]/35 bg-[#eef6d4] text-[#2f3012] dark:bg-[#2f3012]/90 dark:text-slate-100'} onClick={() => setMasterView(k)}>{label}</Button>
-            ))}
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-6 gap-2">
-            <Input placeholder="Search name, source, owner, stage, follow-up" value={masterSearch} onChange={(e)=>setMasterSearch(e.target.value)} className="md:col-span-2" />
-            <Select value={filterOwner} onValueChange={setFilterOwner}><SelectTrigger><SelectValue placeholder="Owner / IB" /></SelectTrigger><SelectContent><SelectItem value="all">All owners</SelectItem>{ownerOptions.map(o=><SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>)}</SelectContent></Select>
-            <Select value={filterSource} onValueChange={setFilterSource}><SelectTrigger><SelectValue placeholder="Source" /></SelectTrigger><SelectContent><SelectItem value="all">All sources</SelectItem>{uniqueSources.map(s=><SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select>
-            <Select value={filterStage} onValueChange={setFilterStage}><SelectTrigger><SelectValue placeholder="Stage" /></SelectTrigger><SelectContent><SelectItem value="all">All stages</SelectItem>{uniqueStages.map(s=><SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select>
-            <Select value={filterPriority} onValueChange={setFilterPriority}><SelectTrigger><SelectValue placeholder="Priority" /></SelectTrigger><SelectContent><SelectItem value="all">All priorities</SelectItem><SelectItem value="urgent">urgent</SelectItem><SelectItem value="high">high</SelectItem><SelectItem value="medium">medium</SelectItem><SelectItem value="normal">normal</SelectItem><SelectItem value="low">low</SelectItem></SelectContent></Select>
-            <Select value={filterFollowup} onValueChange={setFilterFollowup}><SelectTrigger><SelectValue placeholder="Follow-up status" /></SelectTrigger><SelectContent><SelectItem value="all">All follow-up</SelectItem><SelectItem value="overdue">Overdue</SelectItem><SelectItem value="ontrack">On track</SelectItem></SelectContent></Select>
-          </div>
-          <div className="glass-scroll max-h-[280px] overflow-y-auto rounded-md border border-white/20">
-            <table className="w-full text-sm">
-              <thead className="bg-black/10 sticky top-0"><tr className="text-left"><th className="p-2">Name</th><th className="p-2">Source</th><th className="p-2">Owner / IB</th><th className="p-2">Stage</th><th className="p-2">Priority</th><th className="p-2">Follow-up</th></tr></thead>
-              <tbody>
-                {filteredMasterRows.map((r)=>{const overdue=!!r.followup_due_at && new Date(r.followup_due_at).getTime()<Date.now(); return <tr key={r.id} className="border-t border-white/10"><td className="p-2 font-medium">{r.full_name}</td><td className="p-2">{r.source_channel || '-'}</td><td className="p-2">{ownerLabel(r.assigned_to)}</td><td className="p-2">{r.current_stage || '-'}</td><td className="p-2">{r.priority || '-'}</td><td className="p-2">{overdue ? 'Overdue' : 'On track'}</td></tr>})}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <div className="premium-glass rounded-xl border border-white/20 px-5 py-4 space-y-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="text-base font-semibold">Owner Book / IB View</div>
-            <div className="text-xs text-muted-foreground">{ownerBookRows.length} owners</div>
-          </div>
-          <div className="glass-scroll max-h-[260px] overflow-y-auto rounded-md border border-white/20">
-            <table className="w-full text-xs md:text-sm">
-              <thead className="sticky top-0 bg-black/10">
-                <tr className="text-left">
-                  <th className="p-2">Owner / IB</th>
-                  <th className="p-2">Assigned</th>
-                  <th className="p-2">Qualified</th>
-                  <th className="p-2">Funded</th>
-                  <th className="p-2">Active</th>
-                  <th className="p-2">Inactive</th>
-                  <th className="p-2">Overdue</th>
-                  <th className="p-2">Stuck</th>
-                  <th className="p-2">Source Mix</th>
-                </tr>
-              </thead>
-              <tbody>
-                {ownerBookRows.map((o) => (
-                  <tr key={o.ownerId} className="border-t border-white/10">
-                    <td className="p-2 font-medium">{o.ownerName}</td>
-                    <td className="p-2">{o.assigned}</td>
-                    <td className="p-2">{o.qualified}</td>
-                    <td className="p-2">{o.funded}</td>
-                    <td className="p-2">{o.active}</td>
-                    <td className="p-2">{o.inactive}</td>
-                    <td className="p-2">{o.overdue}</td>
-                    <td className="p-2">{o.stuck}</td>
-                    <td className="p-2">{Object.entries(o.sources).sort((a,b)=>b[1]-a[1]).slice(0,2).map(([k,v])=>`${k}:${v}`).join(' · ') || '-'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <div className="premium-glass rounded-xl border border-white/20 px-5 py-4 space-y-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="text-base font-semibold">Reactivation Layer</div>
-            <div className="text-xs text-muted-foreground">{reactivationRows.length} candidates</div>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
-            <Select value={reactivationOwnerFilter} onValueChange={setReactivationOwnerFilter}><SelectTrigger><SelectValue placeholder="Owner / IB" /></SelectTrigger><SelectContent><SelectItem value="all">All owners</SelectItem>{ownerOptions.map(o=><SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>)}</SelectContent></Select>
-            <Select value={reactivationNoRecentAction ? 'yes' : 'no'} onValueChange={(v)=>setReactivationNoRecentAction(v==='yes')}><SelectTrigger><SelectValue placeholder="No recent action" /></SelectTrigger><SelectContent><SelectItem value="yes">No recent action</SelectItem><SelectItem value="no">Include recent action</SelectItem></SelectContent></Select>
-            <Select value={reactivationNoRecentTrading ? 'yes' : 'no'} onValueChange={(v)=>setReactivationNoRecentTrading(v==='yes')}><SelectTrigger><SelectValue placeholder="No recent trading" /></SelectTrigger><SelectContent><SelectItem value="yes">No recent trading</SelectItem><SelectItem value="no">Include recent trading</SelectItem></SelectContent></Select>
-            <div className="text-xs text-muted-foreground flex items-center">Dormant/inactive recovery segment</div>
-          </div>
-
-          <div className="glass-scroll max-h-[260px] overflow-y-auto rounded-md border border-white/20">
-            <table className="w-full text-xs md:text-sm">
-              <thead className="sticky top-0 bg-black/10"><tr className="text-left"><th className="p-2">Client</th><th className="p-2">Owner</th><th className="p-2">Stage</th><th className="p-2">Follow-up</th><th className="p-2">Reactivation Priority</th></tr></thead>
-              <tbody>
-                {reactivationRows.map((r)=><tr key={r.id} onClick={()=>setSelectedReactivationId(r.id)} className={`border-t border-white/10 cursor-pointer ${selectedReactivationId===r.id?'bg-black/10':''}`}><td className="p-2 font-medium">{r.full_name}</td><td className="p-2">{ownerLabel(r.assigned_to)}</td><td className="p-2">{r.current_stage || '-'}</td><td className="p-2">{r.followup_due_at ? (new Date(r.followup_due_at).getTime() < Date.now() ? 'Overdue' : 'Scheduled') : 'None'}</td><td className="p-2">{String(r.priority || 'medium')}</td></tr>)}
-              </tbody>
-            </table>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-2 items-end">
-            <Select value={reactivationReassignTo} onValueChange={setReactivationReassignTo}><SelectTrigger><SelectValue placeholder="Reassign if needed" /></SelectTrigger><SelectContent>{ownerOptions.map(o=><SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>)}</SelectContent></Select>
-            <Select value={reactivationPriority} onValueChange={setReactivationPriority}><SelectTrigger><SelectValue placeholder="Priority tagging" /></SelectTrigger><SelectContent><SelectItem value="urgent">Urgent</SelectItem><SelectItem value="high">High</SelectItem><SelectItem value="medium">Medium</SelectItem></SelectContent></Select>
-            <Select value={reactivationOutcome} onValueChange={setReactivationOutcome}><SelectTrigger><SelectValue placeholder="Outcome tracking" /></SelectTrigger><SelectContent><SelectItem value="nurture">Nurture</SelectItem><SelectItem value="won">Won</SelectItem><SelectItem value="lost">Lost</SelectItem></SelectContent></Select>
-            <div className="flex gap-2">
-              <Button size="sm" className="reassign-cta action-cta" disabled={!selectedReactivationId} onClick={()=>selectedReactivationId && runAction('followup',{lead_id:selectedReactivationId,note:'Reactivation follow-up triggered'},WEBHOOKS.followup)}>Follow-up</Button>
-              <Button size="sm" className="reassign-cta action-cta" disabled={!selectedReactivationId || !reactivationReassignTo} onClick={()=>selectedReactivationId && runAction('reassign',{lead_id:selectedReactivationId,assigned_to:reactivationReassignTo},WEBHOOKS.reassign)}>Reassign</Button>
-              <Button size="sm" className="reassign-cta action-cta" disabled={!selectedReactivationId} onClick={()=>selectedReactivationId && tagReactivationPriority(selectedReactivationId, reactivationPriority)}>Tag</Button>
-              <Button size="sm" className="reassign-cta" disabled={!selectedReactivationId} onClick={()=>selectedReactivationId && runAction('outcome',{lead_id:selectedReactivationId,outcome:reactivationOutcome},WEBHOOKS.outcome || (reactivationOutcome==='won'?WEBHOOKS.won:reactivationOutcome==='lost'?WEBHOOKS.lost:WEBHOOKS.nurture))}>Track</Button>
             </div>
           </div>
         </div>
@@ -1021,7 +908,145 @@ const OperatorHub = () => {
               </CardContent>
             </Card>
           </motion.div>
+        </div>        <div className="premium-glass rounded-xl border border-white/20 px-5 py-4 space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="text-base font-semibold">Business Metrics Layer</div>
+            <div className="text-xs text-muted-foreground">CRM-aligned broker metrics</div>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-2">
+            <div className="rounded-md border border-white/20 p-2"><div className="text-lg font-semibold">{businessMetrics.summary.newLeads}</div><div className="text-xs text-muted-foreground">new leads</div></div>
+            <div className="rounded-md border border-white/20 p-2"><div className="text-lg font-semibold">{businessMetrics.summary.qualified}</div><div className="text-xs text-muted-foreground">qualified</div></div>
+            <div className="rounded-md border border-white/20 p-2"><div className="text-lg font-semibold">{businessMetrics.summary.funded}</div><div className="text-xs text-muted-foreground">funded</div></div>
+            <div className="rounded-md border border-white/20 p-2"><div className="text-lg font-semibold">{businessMetrics.summary.active}</div><div className="text-xs text-muted-foreground">active traders</div></div>
+            <div className="rounded-md border border-white/20 p-2"><div className="text-lg font-semibold">{businessMetrics.summary.inactive}</div><div className="text-xs text-muted-foreground">inactive</div></div>
+            <div className="rounded-md border border-white/20 p-2"><div className="text-lg font-semibold">{businessMetrics.summary.overdue}</div><div className="text-xs text-muted-foreground">overdue follow-ups</div></div>
+            <div className="rounded-md border border-white/20 p-2"><div className="text-lg font-semibold">{businessMetrics.summary.stuck}</div><div className="text-xs text-muted-foreground">stuck prospects</div></div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+            <div className="rounded-md border border-white/20 p-2">
+              <div className="mb-1 font-semibold">By owner / IB</div>
+              {businessMetrics.byOwner.map((x) => <div key={x.key} className="flex justify-between"><span>{x.key}</span><span>{x.value} <span className="text-muted-foreground">(leak {x.leak})</span></span></div>)}
+            </div>
+            <div className="rounded-md border border-white/20 p-2">
+              <div className="mb-1 font-semibold">By source</div>
+              {businessMetrics.bySource.map((x) => <div key={x.key} className="flex justify-between"><span>{x.key}</span><span>{x.value}</span></div>)}
+            </div>
+            <div className="rounded-md border border-white/20 p-2">
+              <div className="mb-1 font-semibold">By stage</div>
+              {businessMetrics.byStage.map((x) => <div key={x.key} className="flex justify-between"><span>{x.key}</span><span>{x.value}</span></div>)}
+            </div>
+          </div>
         </div>
+
+        <div className="premium-glass rounded-xl border border-white/20 px-5 py-4 space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="text-base font-semibold">Master List / Full CRM View</div>
+            <div className="text-xs text-muted-foreground">{filteredMasterRows.length} records</div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {([
+              ['all','All Leads'],
+              ['qualified','Qualified'],
+              ['funded','Funded'],
+              ['active','Active Traders'],
+              ['inactive','Inactive / Dormant'],
+              ['nurture_lost','Nurture / Lost'],
+            ] as Array<[MasterView,string]>).map(([k,label]) => (
+              <Button key={k} size="sm" variant="outline" className={masterView===k? 'queue-tab-active' : 'border-[#8ea24a]/35 bg-[#eef6d4] text-[#2f3012] dark:bg-[#2f3012]/90 dark:text-slate-100'} onClick={() => setMasterView(k)}>{label}</Button>
+            ))}
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-6 gap-2">
+            <Input placeholder="Search name, source, owner, stage, follow-up" value={masterSearch} onChange={(e)=>setMasterSearch(e.target.value)} className="md:col-span-2" />
+            <Select value={filterOwner} onValueChange={setFilterOwner}><SelectTrigger><SelectValue placeholder="Owner / IB" /></SelectTrigger><SelectContent><SelectItem value="all">All owners</SelectItem>{ownerOptions.map(o=><SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>)}</SelectContent></Select>
+            <Select value={filterSource} onValueChange={setFilterSource}><SelectTrigger><SelectValue placeholder="Source" /></SelectTrigger><SelectContent><SelectItem value="all">All sources</SelectItem>{uniqueSources.map(s=><SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select>
+            <Select value={filterStage} onValueChange={setFilterStage}><SelectTrigger><SelectValue placeholder="Stage" /></SelectTrigger><SelectContent><SelectItem value="all">All stages</SelectItem>{uniqueStages.map(s=><SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select>
+            <Select value={filterPriority} onValueChange={setFilterPriority}><SelectTrigger><SelectValue placeholder="Priority" /></SelectTrigger><SelectContent><SelectItem value="all">All priorities</SelectItem><SelectItem value="urgent">urgent</SelectItem><SelectItem value="high">high</SelectItem><SelectItem value="medium">medium</SelectItem><SelectItem value="normal">normal</SelectItem><SelectItem value="low">low</SelectItem></SelectContent></Select>
+            <Select value={filterFollowup} onValueChange={setFilterFollowup}><SelectTrigger><SelectValue placeholder="Follow-up status" /></SelectTrigger><SelectContent><SelectItem value="all">All follow-up</SelectItem><SelectItem value="overdue">Overdue</SelectItem><SelectItem value="ontrack">On track</SelectItem></SelectContent></Select>
+          </div>
+          <div className="glass-scroll max-h-[280px] overflow-y-auto rounded-md border border-white/20">
+            <table className="w-full text-sm">
+              <thead className="bg-black/10 sticky top-0"><tr className="text-left"><th className="p-2">Name</th><th className="p-2">Source</th><th className="p-2">Owner / IB</th><th className="p-2">Stage</th><th className="p-2">Priority</th><th className="p-2">Follow-up</th></tr></thead>
+              <tbody>
+                {filteredMasterRows.map((r)=>{const overdue=!!r.followup_due_at && new Date(r.followup_due_at).getTime()<Date.now(); return <tr key={r.id} className="border-t border-white/10"><td className="p-2 font-medium">{r.full_name}</td><td className="p-2">{r.source_channel || '-'}</td><td className="p-2">{ownerLabel(r.assigned_to)}</td><td className="p-2">{r.current_stage || '-'}</td><td className="p-2">{r.priority || '-'}</td><td className="p-2">{overdue ? 'Overdue' : 'On track'}</td></tr>})}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div className="premium-glass rounded-xl border border-white/20 px-5 py-4 space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="text-base font-semibold">Owner Book / IB View</div>
+            <div className="text-xs text-muted-foreground">{ownerBookRows.length} owners</div>
+          </div>
+          <div className="glass-scroll max-h-[260px] overflow-y-auto rounded-md border border-white/20">
+            <table className="w-full text-xs md:text-sm">
+              <thead className="sticky top-0 bg-black/10">
+                <tr className="text-left">
+                  <th className="p-2">Owner / IB</th>
+                  <th className="p-2">Assigned</th>
+                  <th className="p-2">Qualified</th>
+                  <th className="p-2">Funded</th>
+                  <th className="p-2">Active</th>
+                  <th className="p-2">Inactive</th>
+                  <th className="p-2">Overdue</th>
+                  <th className="p-2">Stuck</th>
+                  <th className="p-2">Source Mix</th>
+                </tr>
+              </thead>
+              <tbody>
+                {ownerBookRows.map((o) => (
+                  <tr key={o.ownerId} className="border-t border-white/10">
+                    <td className="p-2 font-medium">{o.ownerName}</td>
+                    <td className="p-2">{o.assigned}</td>
+                    <td className="p-2">{o.qualified}</td>
+                    <td className="p-2">{o.funded}</td>
+                    <td className="p-2">{o.active}</td>
+                    <td className="p-2">{o.inactive}</td>
+                    <td className="p-2">{o.overdue}</td>
+                    <td className="p-2">{o.stuck}</td>
+                    <td className="p-2">{Object.entries(o.sources).sort((a,b)=>b[1]-a[1]).slice(0,2).map(([k,v])=>`${k}:${v}`).join(' · ') || '-'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div className="premium-glass rounded-xl border border-white/20 px-5 py-4 space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="text-base font-semibold">Reactivation Layer</div>
+            <div className="text-xs text-muted-foreground">{reactivationRows.length} candidates</div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
+            <Select value={reactivationOwnerFilter} onValueChange={setReactivationOwnerFilter}><SelectTrigger><SelectValue placeholder="Owner / IB" /></SelectTrigger><SelectContent><SelectItem value="all">All owners</SelectItem>{ownerOptions.map(o=><SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>)}</SelectContent></Select>
+            <Select value={reactivationNoRecentAction ? 'yes' : 'no'} onValueChange={(v)=>setReactivationNoRecentAction(v==='yes')}><SelectTrigger><SelectValue placeholder="No recent action" /></SelectTrigger><SelectContent><SelectItem value="yes">No recent action</SelectItem><SelectItem value="no">Include recent action</SelectItem></SelectContent></Select>
+            <Select value={reactivationNoRecentTrading ? 'yes' : 'no'} onValueChange={(v)=>setReactivationNoRecentTrading(v==='yes')}><SelectTrigger><SelectValue placeholder="No recent trading" /></SelectTrigger><SelectContent><SelectItem value="yes">No recent trading</SelectItem><SelectItem value="no">Include recent trading</SelectItem></SelectContent></Select>
+            <div className="text-xs text-muted-foreground flex items-center">Dormant/inactive recovery segment</div>
+          </div>
+
+          <div className="glass-scroll max-h-[260px] overflow-y-auto rounded-md border border-white/20">
+            <table className="w-full text-xs md:text-sm">
+              <thead className="sticky top-0 bg-black/10"><tr className="text-left"><th className="p-2">Client</th><th className="p-2">Owner</th><th className="p-2">Stage</th><th className="p-2">Follow-up</th><th className="p-2">Reactivation Priority</th></tr></thead>
+              <tbody>
+                {reactivationRows.map((r)=><tr key={r.id} onClick={()=>setSelectedReactivationId(r.id)} className={`border-t border-white/10 cursor-pointer ${selectedReactivationId===r.id?'bg-black/10':''}`}><td className="p-2 font-medium">{r.full_name}</td><td className="p-2">{ownerLabel(r.assigned_to)}</td><td className="p-2">{r.current_stage || '-'}</td><td className="p-2">{r.followup_due_at ? (new Date(r.followup_due_at).getTime() < Date.now() ? 'Overdue' : 'Scheduled') : 'None'}</td><td className="p-2">{String(r.priority || 'medium')}</td></tr>)}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-2 items-end">
+            <Select value={reactivationReassignTo} onValueChange={setReactivationReassignTo}><SelectTrigger><SelectValue placeholder="Reassign if needed" /></SelectTrigger><SelectContent>{ownerOptions.map(o=><SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>)}</SelectContent></Select>
+            <Select value={reactivationPriority} onValueChange={setReactivationPriority}><SelectTrigger><SelectValue placeholder="Priority tagging" /></SelectTrigger><SelectContent><SelectItem value="urgent">Urgent</SelectItem><SelectItem value="high">High</SelectItem><SelectItem value="medium">Medium</SelectItem></SelectContent></Select>
+            <Select value={reactivationOutcome} onValueChange={setReactivationOutcome}><SelectTrigger><SelectValue placeholder="Outcome tracking" /></SelectTrigger><SelectContent><SelectItem value="nurture">Nurture</SelectItem><SelectItem value="won">Won</SelectItem><SelectItem value="lost">Lost</SelectItem></SelectContent></Select>
+            <div className="flex gap-2">
+              <Button size="sm" className="reassign-cta action-cta" disabled={!selectedReactivationId} onClick={()=>selectedReactivationId && runAction('followup',{lead_id:selectedReactivationId,note:'Reactivation follow-up triggered'},WEBHOOKS.followup)}>Follow-up</Button>
+              <Button size="sm" className="reassign-cta action-cta" disabled={!selectedReactivationId || !reactivationReassignTo} onClick={()=>selectedReactivationId && runAction('reassign',{lead_id:selectedReactivationId,assigned_to:reactivationReassignTo},WEBHOOKS.reassign)}>Reassign</Button>
+              <Button size="sm" className="reassign-cta action-cta" disabled={!selectedReactivationId} onClick={()=>selectedReactivationId && tagReactivationPriority(selectedReactivationId, reactivationPriority)}>Tag</Button>
+              <Button size="sm" className="reassign-cta" disabled={!selectedReactivationId} onClick={()=>selectedReactivationId && runAction('outcome',{lead_id:selectedReactivationId,outcome:reactivationOutcome},WEBHOOKS.outcome || (reactivationOutcome==='won'?WEBHOOKS.won:reactivationOutcome==='lost'?WEBHOOKS.lost:WEBHOOKS.nurture))}>Track</Button>
+            </div>
+          </div>
+        </div>
+
+
       </div>
     </div>
   );
