@@ -751,11 +751,10 @@ const OperatorHub = () => {
     const noRecentAction = daysSinceUpdate > 7;
     const noRecentTrading = daysSinceUpdate > 14;
 
-    const baseSegment = ['inactive', 'dormant', 'reactivation', 'funded', 'trading', 'active', 'active_trader'].includes(stage);
+    const baseSegment = ['inactive', 'dormant', 'reactivation', 'stuck'].includes(stage);
     const byOwner = reactivationOwnerFilter === 'all' || r.assigned_to === reactivationOwnerFilter;
     const byAction = !reactivationNoRecentAction || noRecentAction;
-    const tradingSensitive = ['funded', 'trading', 'active', 'active_trader'].includes(stage);
-    const byTrading = !reactivationNoRecentTrading || !tradingSensitive || noRecentTrading;
+    const byTrading = !reactivationNoRecentTrading || noRecentTrading;
 
     return baseSegment && byOwner && byAction && byTrading;
   });
