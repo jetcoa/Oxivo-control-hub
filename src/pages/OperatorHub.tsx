@@ -390,6 +390,7 @@ const OperatorHub = () => {
   const [addIbStatus, setAddIbStatus] = useState('');
   const [assignExistingIb, setAssignExistingIb] = useState(false);
   const [assignIbSearch, setAssignIbSearch] = useState('');
+  const [selectedAssignUserId, setSelectedAssignUserId] = useState('');
 
   const postWebhook = async (url: string | undefined, payload: Record<string, unknown>) => {
     if (!url) throw new Error("Missing webhook URL for this action.");
@@ -506,8 +507,9 @@ const OperatorHub = () => {
         id: uuid,
         name,
         role: 'ib',
+        in_type: newIbParent && newIbParent !== 'none' ? 'sub-ib' : 'master-ib',
       };
-      if (newIbParent.trim()) payload.parent_ib_id = newIbParent.trim();
+      if (newIbParent && newIbParent !== 'none') payload.parent_ib_id = newIbParent.trim();
 
       const res = await fetch(`${supabaseUrl}/rest/v1/users`, {
         method: 'POST',
@@ -539,10 +541,15 @@ const OperatorHub = () => {
   const handleAssignExistingIb = async () => {
     try {
       setAddIbStatus('');
-      const selectedId = newIbParent;
-      if (!selectedId) throw new Error('Select an IB to assign');
+      if (!selectedAssignUserId) throw new Error('Select an IB to assign');
 
-      const res = await fetch(`${supabaseUrl}/rest/v1/users?id=eq.${selectedId}`, {
+      const payload: Record<string, any> = {
+        role: 'ib',
+        in_type: newIbParent && newIbParent !== 'none' ? 'sub-ib' : 'master-ib',
+      };
+      if (newIbParent && newIbParent !== 'none') payload.parent_ib_id = newIbParent.trim();
+
+      const res = await fetch(`${supabaseUrl}/rest/v1/users?id=eq.${selectedAssignUserId}`, {
         method: 'PATCH',
         headers: {
           apikey: supabaseAnonKey,
@@ -550,7 +557,7 @@ const OperatorHub = () => {
           'Content-Type': 'application/json',
           Prefer: 'return=minimal',
         },
-        body: JSON.stringify({ role: 'ib' }),
+        body: JSON.stringify(payload),
       });
 
       if (!res.ok) {
@@ -558,6 +565,7 @@ const OperatorHub = () => {
         throw new Error(`Failed to assign IB (${res.status}): ${err}`);
       }
 
+      setSelectedAssignUserId('');
       setNewIbParent('');
       setShowAddIbModal(false);
       setAddIbStatus('IB assigned successfully.');
@@ -1450,8 +1458,8 @@ const OperatorHub = () => {
               <div className="text-lg font-semibold">Add Sub-IB / Operator</div>
 
               <div className="flex gap-2">
-                <Button size="sm" variant={!assignExistingIb ? 'default' : 'outline'} className="flex-1" onClick={() => { setAssignExistingIb(false); setAddIbStatus(''); }}>Create New</Button>
-                <Button size="sm" variant={assignExistingIb ? 'default' : 'outline'} className="flex-1" onClick={() => { setAssignExistingIb(true); setAddIbStatus(''); }}>Assign Existing</Button>
+                <Button size="sm" variant={!assignExistingIb ? 'default' : 'outline'} className="flex-1" onClick={() => { setAssignExistingIb(false); setSelectedAssignUserId(''); setAddIbStatus(''); }}>Create New</Button>
+                <Button size="sm" variant={assignExistingIb ? 'default' : 'outline'} className="flex-1" onClick={() => { setAssignExistingIb(true); setSelectedAssignUserId(''); setAssignIbSearch(''); setAddIbStatus(''); }}>Assign Existing</Button>
               </div>
 
               {!assignExistingIb ? (
@@ -1465,7 +1473,7 @@ const OperatorHub = () => {
                     <Select value={newIbParent} onValueChange={setNewIbParent}>
                       <SelectTrigger><SelectValue placeholder="Select parent IB" /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="none">None (top-level)</SelectItem>
+                        <SelectItem value="none">Master IB</SelectItem>
                         {ownerOptions.map(o => <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>)}
                       </SelectContent>
                     </Select>
@@ -1482,12 +1490,23 @@ const OperatorHub = () => {
                     {ownerOptions
                       .filter(o => o.name.toLowerCase().includes(assignIbSearch.toLowerCase()))
                       .map(o => (
-                        <div key={o.id} className="flex items-center justify-between p-2 hover:bg-black/10 cursor-pointer" onClick={() => { setNewIbParent(o.id); void handleAssignExistingIb(); }}>
+                        <div key={o.id} className={`flex items-center justify-between p-2 hover:bg-black/10 cursor-pointer ${selectedAssignUserId===o.id?'bg-black/5':''}`} onClick={() => setSelectedAssignUserId(o.id)}>
                           <span>{o.name}</span>
                           <span className="text-xs text-muted-foreground">{o.role || 'ib'}</span>
                         </div>
                       ))}
                   </div>
+                  <div className="space-y-2">
+                    <Label>Parent IB (optional)</Label>
+                    <Select value={newIbParent} onValueChange={setNewIbParent}>
+                      <SelectTrigger><SelectValue placeholder="Select parent IB" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Master IB</SelectItem>
+                        {ownerOptions.map(o => <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <Button size="sm" className="w-full" disabled={!selectedAssignUserId} onClick={() => { void handleAssignExistingIb(); }}>Assign as IB</Button>
                 </>
               )}
 
