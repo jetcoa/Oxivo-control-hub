@@ -1163,9 +1163,16 @@ const OperatorHub = () => {
             <Select value={filterPriority} onValueChange={setFilterPriority}><SelectTrigger><SelectValue placeholder="Priority" /></SelectTrigger><SelectContent><SelectItem value="all">All priorities</SelectItem><SelectItem value="urgent">urgent</SelectItem><SelectItem value="high">high</SelectItem><SelectItem value="medium">medium</SelectItem><SelectItem value="normal">normal</SelectItem><SelectItem value="low">low</SelectItem></SelectContent></Select>
             <Select value={filterFollowup} onValueChange={setFilterFollowup}><SelectTrigger><SelectValue placeholder="Follow-up status" /></SelectTrigger><SelectContent><SelectItem value="all">All follow-up</SelectItem><SelectItem value="overdue">Overdue</SelectItem><SelectItem value="ontrack">On track</SelectItem></SelectContent></Select>
           </div>
-          <div className="flex-1 overflow-y-auto rounded-md border border-white/20">
+          <div className="flex-1 overflow-y-auto rounded-md border border-white/20 relative">
             <table className="w-full text-sm">
-              <thead className="bg-black/10 sticky top-0"><tr className="text-left"><th className="p-2">Name</th><th className="p-2">Source</th><th className="p-2">Owner / IB</th><th className="p-2">Stage</th><th className="p-2">Priority</th><th className="p-2">Follow-up</th></tr></thead>
+              <thead><tr className="text-left">
+                <th className="sticky top-0 z-10 bg-black/10 p-2">Name</th>
+                <th className="sticky top-0 z-10 bg-black/10 p-2">Source</th>
+                <th className="sticky top-0 z-10 bg-black/10 p-2">Owner / IB</th>
+                <th className="sticky top-0 z-10 bg-black/10 p-2">Stage</th>
+                <th className="sticky top-0 z-10 bg-black/10 p-2">Priority</th>
+                <th className="sticky top-0 z-10 bg-black/10 p-2">Follow-up</th>
+              </tr></thead>
               <tbody>
                 {filteredMasterRows.map((r)=>{const overdue=!!r.followup_due_at && new Date(r.followup_due_at).getTime()<Date.now(); return <tr key={r.id} className="border-t border-white/10"><td className="p-2 font-medium">{r.full_name}</td><td className="p-2">{r.source_channel || '-'}</td><td className="p-2">{ownerLabel(r.assigned_to)}</td><td className="p-2">{r.current_stage || '-'}</td><td className="p-2">{r.priority || '-'}</td><td className="p-2">{overdue ? 'Overdue' : 'On track'}</td></tr>})}
               </tbody>
@@ -1224,9 +1231,15 @@ const OperatorHub = () => {
             <div className="text-xs text-muted-foreground flex items-center">Dormant/inactive recovery segment</div>
           </div>
 
-          <div className="glass-scroll max-h-[260px] overflow-y-auto rounded-md border border-white/20">
+          <div className="glass-scroll max-h-[260px] overflow-y-auto rounded-md border border-white/20 relative">
             <table className="w-full text-xs md:text-sm">
-              <thead className="sticky top-0 bg-black/10"><tr className="text-left"><th className="p-2">Client</th><th className="p-2">Owner</th><th className="p-2">Stage</th><th className="p-2">Follow-up</th><th className="p-2">Reactivation Priority</th></tr></thead>
+              <thead><tr className="text-left">
+                <th className="sticky top-0 z-10 bg-black/10 p-2">Client</th>
+                <th className="sticky top-0 z-10 bg-black/10 p-2">Owner</th>
+                <th className="sticky top-0 z-10 bg-black/10 p-2">Stage</th>
+                <th className="sticky top-0 z-10 bg-black/10 p-2">Follow-up</th>
+                <th className="sticky top-0 z-10 bg-black/10 p-2">Reactivation Priority</th>
+              </tr></thead>
               <tbody>
                 {reactivationRows.map((r)=><tr key={r.id} onClick={()=>setSelectedReactivationId(r.id)} className={`border-t border-white/10 cursor-pointer ${selectedReactivationId===r.id?'bg-black/10':''}`}><td className="p-2 font-medium">{r.full_name}</td><td className="p-2">{ownerLabel(r.assigned_to)}</td><td className="p-2">{r.current_stage || '-'}</td><td className="p-2">{r.followup_due_at ? (new Date(r.followup_due_at).getTime() < Date.now() ? 'Overdue' : 'Scheduled') : 'None'}</td><td className="p-2">{String(r.priority || 'medium')}</td></tr>)}
               </tbody>
