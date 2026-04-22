@@ -369,6 +369,7 @@ const OperatorHub = () => {
   const [masterView, setMasterView] = useState<MasterView>('all');
   const [masterSearch, setMasterSearch] = useState('');
   const [filterOwner, setFilterOwner] = useState('all');
+  const [ownerSearch, setOwnerSearch] = useState('');
   const [filterSource, setFilterSource] = useState('all');
   const [filterStage, setFilterStage] = useState('all');
   const [filterPriority, setFilterPriority] = useState('all');
@@ -387,6 +388,8 @@ const OperatorHub = () => {
   const [newIbName, setNewIbName] = useState('');
   const [newIbParent, setNewIbParent] = useState('');
   const [addIbStatus, setAddIbStatus] = useState('');
+  const [assignExistingIb, setAssignExistingIb] = useState(false);
+  const [assignIbSearch, setAssignIbSearch] = useState('');
 
   const postWebhook = async (url: string | undefined, payload: Record<string, unknown>) => {
     if (!url) throw new Error("Missing webhook URL for this action.");
@@ -530,6 +533,38 @@ const OperatorHub = () => {
       setTimeout(() => setAddIbStatus(''), 3000);
     } catch (e: any) {
       setAddIbStatus(e?.message || 'Failed to create IB.');
+    }
+  };
+
+  const handleAssignExistingIb = async () => {
+    try {
+      setAddIbStatus('');
+      const selectedId = newIbParent;
+      if (!selectedId) throw new Error('Select an IB to assign');
+
+      const res = await fetch(`${supabaseUrl}/rest/v1/users?id=eq.${selectedId}`, {
+        method: 'PATCH',
+        headers: {
+          apikey: supabaseAnonKey,
+          Authorization: `Bearer ${supabaseAnonKey}`,
+          'Content-Type': 'application/json',
+          Prefer: 'return=minimal',
+        },
+        body: JSON.stringify({ role: 'ib' }),
+      });
+
+      if (!res.ok) {
+        const err = await res.text();
+        throw new Error(`Failed to assign IB (${res.status}): ${err}`);
+      }
+
+      setNewIbParent('');
+      setShowAddIbModal(false);
+      setAddIbStatus('IB assigned successfully.');
+      void loadOwners();
+      setTimeout(() => setAddIbStatus(''), 3000);
+    } catch (e: any) {
+      setAddIbStatus(e?.message || 'Failed to assign IB.');
     }
   };
 
@@ -1271,7 +1306,20 @@ const OperatorHub = () => {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-6 gap-2">
             <Input placeholder="Search name, source, owner, stage, follow-up" value={masterSearch} onChange={(e)=>setMasterSearch(e.target.value)} className="md:col-span-2" />
-            <Select value={filterOwner} onValueChange={setFilterOwner}><SelectTrigger><SelectValue placeholder="Owner / IB" /></SelectTrigger><SelectContent><SelectItem value="all">All owners</SelectItem>{ownerOptions.map(o=><SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>)}</SelectContent></Select>
+            <div className="flex flex-col gap-1">
+              <Input placeholder="Filter owners…" value={ownerSearch} onChange={(e)=>setOwnerSearch(e.target.value)} className="h-8 text-xs" />
+              <Select value={filterOwner} onValueChange={setFilterOwner}>
+                <SelectTrigger className="h-8">
+                  <SelectValue placeholder="Owner / IB" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All owners</SelectItem>
+                  {ownerOptions
+                    .filter(o => o.name.toLowerCase().includes(ownerSearch.toLowerCase()))
+                    .map(o => <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
             <Select value={filterSource} onValueChange={setFilterSource}><SelectTrigger><SelectValue placeholder="Source" /></SelectTrigger><SelectContent><SelectItem value="all">All sources</SelectItem>{uniqueSources.map(s=><SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select>
             <Select value={filterStage} onValueChange={setFilterStage}><SelectTrigger><SelectValue placeholder="Stage" /></SelectTrigger><SelectContent><SelectItem value="all">All stages</SelectItem>{uniqueStages.map(s=><SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select>
             <Select value={filterPriority} onValueChange={setFilterPriority}><SelectTrigger><SelectValue placeholder="Priority" /></SelectTrigger><SelectContent><SelectItem value="all">All priorities</SelectItem><SelectItem value="urgent">urgent</SelectItem><SelectItem value="high">high</SelectItem><SelectItem value="medium">medium</SelectItem><SelectItem value="normal">normal</SelectItem><SelectItem value="low">low</SelectItem></SelectContent></Select>
@@ -1400,25 +1448,51 @@ const OperatorHub = () => {
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
             <div className="premium-glass rounded-xl border border-white/20 p-6 w-full max-w-md space-y-4">
               <div className="text-lg font-semibold">Add Sub-IB / Operator</div>
-              <div className="space-y-2">
-                <Label>Name</Label>
-                <Input placeholder="IB / Operator name" value={newIbName} onChange={(e) => setNewIbName(e.target.value)} />
-              </div>
-              <div className="space-y-2">
-                <Label>Parent IB (optional)</Label>
-                <Select value={newIbParent} onValueChange={setNewIbParent}>
-                  <SelectTrigger><SelectValue placeholder="Select parent IB" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">None (top-level)</SelectItem>
-                    {ownerOptions.map(o => <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              {addIbStatus && <div className="text-xs text-muted-foreground">{addIbStatus}</div>}
+
               <div className="flex gap-2">
-                <Button size="sm" className="flex-1" disabled={!newIbName.trim()} onClick={() => { void createSubIb(); }}>Create</Button>
-                <Button size="sm" variant="outline" className="flex-1" onClick={() => { setShowAddIbModal(false); setAddIbStatus(''); }}>Cancel</Button>
+                <Button size="sm" variant={!assignExistingIb ? 'default' : 'outline'} className="flex-1" onClick={() => { setAssignExistingIb(false); setAddIbStatus(''); }}>Create New</Button>
+                <Button size="sm" variant={assignExistingIb ? 'default' : 'outline'} className="flex-1" onClick={() => { setAssignExistingIb(true); setAddIbStatus(''); }}>Assign Existing</Button>
               </div>
+
+              {!assignExistingIb ? (
+                <>
+                  <div className="space-y-2">
+                    <Label>Name</Label>
+                    <Input placeholder="IB / Operator name" value={newIbName} onChange={(e) => setNewIbName(e.target.value)} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Parent IB (optional)</Label>
+                    <Select value={newIbParent} onValueChange={setNewIbParent}>
+                      <SelectTrigger><SelectValue placeholder="Select parent IB" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">None (top-level)</SelectItem>
+                        {ownerOptions.map(o => <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <Button size="sm" className="w-full" disabled={!newIbName.trim()} onClick={() => { void createSubIb(); }}>Create IB</Button>
+                </>
+              ) : (
+                <>
+                  <div className="space-y-2">
+                    <Label>Search existing user to assign as IB</Label>
+                    <Input placeholder="Type to search..." value={assignIbSearch} onChange={(e) => setAssignIbSearch(e.target.value)} />
+                  </div>
+                  <div className="max-h-40 overflow-y-auto rounded-md border border-white/20">
+                    {ownerOptions
+                      .filter(o => o.name.toLowerCase().includes(assignIbSearch.toLowerCase()))
+                      .map(o => (
+                        <div key={o.id} className="flex items-center justify-between p-2 hover:bg-black/10 cursor-pointer" onClick={() => { setNewIbParent(o.id); void handleAssignExistingIb(); }}>
+                          <span>{o.name}</span>
+                          <span className="text-xs text-muted-foreground">{o.role || 'ib'}</span>
+                        </div>
+                      ))}
+                  </div>
+                </>
+              )}
+
+              {addIbStatus && <div className="text-xs text-muted-foreground">{addIbStatus}</div>}
+              <Button size="sm" variant="outline" className="w-full" onClick={() => { setShowAddIbModal(false); setAddIbStatus(''); }}>Cancel</Button>
             </div>
           </div>
         )}
