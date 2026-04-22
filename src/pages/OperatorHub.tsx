@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -386,6 +386,9 @@ const OperatorHub = () => {
   const [reactivationPriority, setReactivationPriority] = useState('high');
   const [reactivationOutcome, setReactivationOutcome] = useState('nurture');
   const [reactivatingLeadId, setReactivatingLeadId] = useState<string | null>(null);
+  const [nextBestAction, setNextBestAction] = useState<string>('');
+  const [actionFaded, setActionFaded] = useState(false);
+  const fadeRef = useRef<NodeJS.Timeout | null>(null);
   const [showAddIbModal, setShowAddIbModal] = useState(false);
   const [newIbName, setNewIbName] = useState('');
   const [newIbParent, setNewIbParent] = useState('');
@@ -407,6 +410,37 @@ const OperatorHub = () => {
     }
   };
 
+  const computeNextBestAction = (lead: QueueLead | null) => {
+    if (!lead) return '';
+    const stage = lead.stage.toLowerCase();
+    const overdue = lead.followUpDue.includes('Overdue');
+    const hasDue = lead.followUpDue !== 'TBD';
+    const isUnassigned = lead.owner === 'unassigned';
+
+    if (isUnassigned) return 'Assign an owner';
+    if (overdue) return 'Send follow-up';
+    if (stage === 'new_lead' || stage === 'contacted' || stage === 'qualified') return 'Send follow-up';
+    if (['kyc_started', 'kyc_approved', 'funded', 'demo_trading'].includes(stage)) return 'Set funding timeline';
+    if (stage === 'reactivation') return 'Change stage to qualified';
+    if (stage === 'lost') return 'Reactivate or close as won';
+    return 'Update stage or reassign';
+  };
+
+  useEffect(() => {
+    if (selectedLead) {
+      const action = computeNextBestAction(selectedLead);
+      setNextBestAction(action);
+      setActionFaded(false);
+      if (fadeRef.current) clearTimeout(fadeRef.current);
+      fadeRef.current = setTimeout(() => setActionFaded(true), 12000);
+    } else {
+      setNextBestAction('');
+    }
+    return () => {
+      if (fadeRef.current) clearTimeout(fadeRef.current);
+    };
+  }, [selectedLead]);
+
   const refreshQueues = async (focusView: QueueView, preserveLeadId?: string) => {
     const views: QueueView[] = ["New", "Hot", "Stuck", "Overdue"];
     const [rowsByView, latestMaster] = await Promise.all([
@@ -425,7 +459,10 @@ const OperatorHub = () => {
     const allLeads = views.flatMap((v) => nextLeadData[v]);
     const preserved = preserveLeadId ? allLeads.find((l) => l.id === preserveLeadId) : null;
     const focusedFirst = nextLeadData[focusView]?.[0] ?? null;
-    setSelectedLead(preserved ?? focusedFirst ?? null);
+    setSelectedLead((prev) => {
+      const next = preserved ?? focusedFirst ?? prev;
+      return next;
+    });
   };
 
   const runAction = async (
@@ -437,7 +474,7 @@ const OperatorHub = () => {
       setActionBusy(action);
       setActionMessage("");
       const currentLeadId = selectedLead?.id;
-      await postWebhook(endpoint, payload);
+      if (endpoint) await postWebhook(endpoint, payload);
       await refreshQueues(activeView, currentLeadId);
       setActionMessage(`${action} action sent successfully and queues refreshed.`);
     } catch (err: any) {
@@ -1047,6 +1084,11 @@ const OperatorHub = () => {
                         <div><span className="text-[#4a5b2a] dark:text-slate-300">priority:</span> {selectedLead.priority}</div>
                         <div><span className="text-[#4a5b2a] dark:text-slate-300">follow-up due:</span> {selectedLead.followUpDue}</div>
                         <div><span className="text-[#4a5b2a] dark:text-slate-300">last action:</span> {selectedLead.lastAction}</div>
+                        {nextBestAction && (
+                          <div className={`text-xs text-[#b8d965] dark:text-[#b8d965] ${actionFaded ? 'opacity-70' : ''}`}>
+                            Next Best Action: {nextBestAction}
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
