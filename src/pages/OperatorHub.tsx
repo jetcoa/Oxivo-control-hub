@@ -500,10 +500,10 @@ const OperatorHub = () => {
 
       const payload: Record<string, any> = {
         id: uuid,
-        full_name: newIbName.trim(),
+        name: newIbName.trim(),
         role: 'ib',
       };
-      if (newIbParent.trim()) payload.parent_id = newIbParent.trim();
+      if (newIbParent.trim()) payload.parent_ib_id = newIbParent.trim();
 
       const res = await fetch(`${supabaseUrl}/rest/v1/users`, {
         method: 'POST',
