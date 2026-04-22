@@ -507,7 +507,7 @@ const OperatorHub = () => {
         id: uuid,
         name,
         role: 'ib',
-        in_type: newIbParent && newIbParent !== 'none' ? 'sub-ib' : 'master-ib',
+        ib_type: newIbParent && newIbParent !== 'none' ? 'sub-ib' : 'master-ib',
       };
       if (newIbParent && newIbParent !== 'none') payload.parent_ib_id = newIbParent.trim();
 
@@ -545,7 +545,7 @@ const OperatorHub = () => {
 
       const payload: Record<string, any> = {
         role: 'ib',
-        in_type: newIbParent && newIbParent !== 'none' ? 'sub-ib' : 'master-ib',
+        ib_type: newIbParent && newIbParent !== 'none' ? 'sub-ib' : 'master-ib',
       };
       if (newIbParent && newIbParent !== 'none') payload.parent_ib_id = newIbParent.trim();
 
