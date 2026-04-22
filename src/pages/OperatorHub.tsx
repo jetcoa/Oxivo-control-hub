@@ -819,7 +819,7 @@ const OperatorHub = () => {
 
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-12">
           <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="xl:col-span-4">
-            <Card className="premium-glass h-full border-white/20 bg-transparent">
+            <Card className="premium-glass h-[calc(100vh-140px)] border-white/20 bg-transparent overflow-hidden flex flex-col">
               <CardHeader>
                 <div className="flex items-center justify-between gap-2">
                   <CardTitle>Lead Queue</CardTitle>
@@ -833,7 +833,7 @@ const OperatorHub = () => {
                   </Button>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-4 flex-1 overflow-y-auto">
                 <div className="flex flex-wrap gap-2">
                   {queueViews.map((view) => {
                     const isActive = activeView === view;
@@ -899,11 +899,11 @@ const OperatorHub = () => {
           </motion.div>
 
           <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="xl:col-span-4">
-            <Card className="premium-glass h-full border-white/20 bg-transparent">
+            <Card className="premium-glass h-[calc(100vh-180px)] border-white/20 bg-transparent overflow-hidden flex flex-col sticky top-[140px]">
               <CardHeader>
                 <CardTitle>Lead Detail Panel</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3 text-sm">
+              <CardContent className="space-y-3 text-sm flex-1 overflow-y-auto">
                 {!selectedLead && <div className="text-muted-foreground">Select a lead from queue.</div>}
                 {selectedLead && (
                   <div className="space-y-3">
@@ -1108,26 +1108,32 @@ const OperatorHub = () => {
             <div className="text-xs text-muted-foreground">CRM-aligned broker metrics</div>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-2">
-            <div className="rounded-md border border-white/20 p-2"><div className="text-lg font-semibold">{businessMetrics.summary.newLeads}</div><div className="text-xs text-muted-foreground">new leads</div></div>
-            <div className="rounded-md border border-white/20 p-2"><div className="text-lg font-semibold">{businessMetrics.summary.qualified}</div><div className="text-xs text-muted-foreground">qualified</div></div>
-            <div className="rounded-md border border-white/20 p-2"><div className="text-lg font-semibold">{businessMetrics.summary.funded}</div><div className="text-xs text-muted-foreground">funded</div></div>
-            <div className="rounded-md border border-white/20 p-2"><div className="text-lg font-semibold">{businessMetrics.summary.active}</div><div className="text-xs text-muted-foreground">active traders</div></div>
-            <div className="rounded-md border border-white/20 p-2"><div className="text-lg font-semibold">{businessMetrics.summary.inactive}</div><div className="text-xs text-muted-foreground">inactive</div></div>
-            <div className="rounded-md border border-white/20 p-2"><div className="text-lg font-semibold">{businessMetrics.summary.overdue}</div><div className="text-xs text-muted-foreground">overdue follow-ups</div></div>
-            <div className="rounded-md border border-white/20 p-2"><div className="text-lg font-semibold">{businessMetrics.summary.stuck}</div><div className="text-xs text-muted-foreground">stuck prospects</div></div>
+            <div className="rounded-md border border-white/20 p-2 min-h-[72px] flex flex-col justify-center"><div className="text-lg font-semibold">{businessMetrics.summary.newLeads}</div><div className="text-xs text-muted-foreground">new leads</div></div>
+            <div className="rounded-md border border-white/20 p-2 min-h-[72px] flex flex-col justify-center"><div className="text-lg font-semibold">{businessMetrics.summary.qualified}</div><div className="text-xs text-muted-foreground">qualified</div></div>
+            <div className="rounded-md border border-white/20 p-2 min-h-[72px] flex flex-col justify-center"><div className="text-lg font-semibold">{businessMetrics.summary.funded}</div><div className="text-xs text-muted-foreground">funded</div></div>
+            <div className="rounded-md border border-white/20 p-2 min-h-[72px] flex flex-col justify-center"><div className="text-lg font-semibold">{businessMetrics.summary.active}</div><div className="text-xs text-muted-foreground">active traders</div></div>
+            <div className="rounded-md border border-white/20 p-2 min-h-[72px] flex flex-col justify-center"><div className="text-lg font-semibold">{businessMetrics.summary.inactive}</div><div className="text-xs text-muted-foreground">inactive</div></div>
+            <div className="rounded-md border border-white/20 p-2 min-h-[72px] flex flex-col justify-center"><div className="text-lg font-semibold">{businessMetrics.summary.overdue}</div><div className="text-xs text-muted-foreground">overdue follow-ups</div></div>
+            <div className="rounded-md border border-white/20 p-2 min-h-[72px] flex flex-col justify-center"><div className="text-lg font-semibold">{businessMetrics.summary.stuck}</div><div className="text-xs text-muted-foreground">stuck prospects</div></div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
-            <div className="rounded-md border border-white/20 p-2">
+            <div className="rounded-md border border-white/20 p-2 min-h-[120px] flex flex-col">
               <div className="mb-1 font-semibold">By owner / IB</div>
-              {businessMetrics.byOwner.map((x) => <div key={x.key} className="flex justify-between"><span>{x.key}</span><span>{x.value} <span className="text-muted-foreground">(leak {x.leak})</span></span></div>)}
+              <div className="flex-1 overflow-y-auto">
+                {businessMetrics.byOwner.map((x) => <div key={x.key} className="flex justify-between"><span>{x.key}</span><span>{x.value} <span className="text-muted-foreground">(leak {x.leak})</span></span></div>)}
+              </div>
             </div>
-            <div className="rounded-md border border-white/20 p-2">
+            <div className="rounded-md border border-white/20 p-2 min-h-[120px] flex flex-col">
               <div className="mb-1 font-semibold">By source</div>
-              {businessMetrics.bySource.map((x) => <div key={x.key} className="flex justify-between"><span>{x.key}</span><span>{x.value}</span></div>)}
+              <div className="flex-1 overflow-y-auto">
+                {businessMetrics.bySource.map((x) => <div key={x.key} className="flex justify-between"><span>{x.key}</span><span>{x.value}</span></div>)}
+              </div>
             </div>
-            <div className="rounded-md border border-white/20 p-2">
+            <div className="rounded-md border border-white/20 p-2 min-h-[120px] flex flex-col">
               <div className="mb-1 font-semibold">By stage</div>
-              {businessMetrics.byStage.map((x) => <div key={x.key} className="flex justify-between"><span>{x.key}</span><span>{x.value}</span></div>)}
+              <div className="flex-1 overflow-y-auto">
+                {businessMetrics.byStage.map((x) => <div key={x.key} className="flex justify-between"><span>{x.key}</span><span>{x.value}</span></div>)}
+              </div>
             </div>
           </div>
         </div>
