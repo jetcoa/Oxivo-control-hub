@@ -55,6 +55,7 @@ const LIFECYCLE_STAGES = [
   ['kyc_started', 'KYC Started'],
   ['kyc_approved', 'KYC Approved'],
   ['funded', 'Funded'],
+  ['demo_trading', 'Demo Trading'],
   ['trading', 'Trading'],
   ['inactive', 'Inactive'],
   ['reactivation', 'Reactivation'],
@@ -67,7 +68,8 @@ const STAGE_TRANSITIONS: Record<string, string[]> = {
   qualified: ['kyc_started', 'lost'],
   kyc_started: ['kyc_approved', 'inactive', 'lost'],
   kyc_approved: ['funded', 'lost'],
-  funded: ['trading', 'inactive'],
+  funded: ['demo_trading', 'inactive'],
+  demo_trading: ['trading', 'inactive'],
   trading: ['inactive', 'reactivation'],
   inactive: ['reactivation', 'lost'],
   reactivation: ['contacted', 'qualified', 'lost'],
@@ -136,7 +138,7 @@ function buildQueueQuery(view: QueueView): URLSearchParams {
       ...base,
       order: "updated_at.asc",
       created_at: `lt.${dubaiDayStartIso}`,
-      current_stage: "in.(contacted,qualified,kyc_started,kyc_approved,reactivation)",
+      current_stage: "in.(contacted,qualified,kyc_started,kyc_approved,demo_trading,reactivation)",
     });
   }
 
@@ -144,7 +146,7 @@ function buildQueueQuery(view: QueueView): URLSearchParams {
     return new URLSearchParams({ ...base, order: "updated_at.asc", created_at: `lt.${dubaiDayStartIso}`, current_stage: "in.(stuck,kyc_started,inactive)" });
   }
 
-  return new URLSearchParams({ ...base, order: "followup_due_at.asc", followup_due_at: "lt.NOW()", current_stage: "not.in.(lost,trading,funded,won)" });
+  return new URLSearchParams({ ...base, order: "followup_due_at.asc", followup_due_at: "lt.NOW()", current_stage: "not.in.(lost,trading,demo_trading,funded,won)" });
 }
 
 async function resolveOwnerNames(ownerIds: string[]): Promise<Map<string, string>> {
@@ -754,7 +756,7 @@ const OperatorHub = () => {
       const g = groups.get(ownerId)!;
       g.assigned += 1;
       if (['qualified', 'kyc_started', 'kyc_approved'].includes(stage)) g.qualified += 1;
-      if (['funded', 'won', 'funded_client'].includes(stage)) g.funded += 1;
+      if (['funded', 'demo_trading', 'won', 'funded_client'].includes(stage)) g.funded += 1;
       if (['trading', 'active_trader', 'active'].includes(stage)) g.active += 1;
       if (['inactive', 'dormant', 'reactivation'].includes(stage)) g.inactive += 1;
       if (['stuck', 'kyc_started', 'reactivation'].includes(stage)) g.stuck += 1;
@@ -773,7 +775,7 @@ const OperatorHub = () => {
     const summary = {
       newLeads: rows.filter((r) => stageOf(r) === 'new_lead').length,
       qualified: rows.filter((r) => ['qualified', 'kyc_started', 'kyc_approved'].includes(stageOf(r))).length,
-      funded: rows.filter((r) => ['funded', 'won', 'funded_client'].includes(stageOf(r))).length,
+      funded: rows.filter((r) => ['funded', 'demo_trading', 'won', 'funded_client'].includes(stageOf(r))).length,
       active: rows.filter((r) => ['trading', 'active_trader', 'active'].includes(stageOf(r))).length,
       inactive: rows.filter((r) => ['inactive', 'dormant', 'reactivation'].includes(stageOf(r))).length,
       overdue: rows.filter((r) => overdue(r)).length,
@@ -808,7 +810,7 @@ const OperatorHub = () => {
 
     const stageMap = {
       qualified: ['qualified', 'kyc_started', 'kyc_approved'],
-      funded: ['funded', 'won', 'funded_client'],
+      funded: ['funded', 'demo_trading', 'won', 'funded_client'],
       active: ['trading', 'active_trader', 'active'],
       inactive: ['inactive', 'dormant', 'reactivation'],
       nurture_lost: ['nurture', 'lost'],
