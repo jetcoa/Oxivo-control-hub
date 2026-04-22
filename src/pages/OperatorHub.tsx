@@ -383,6 +383,10 @@ const OperatorHub = () => {
   const [reactivationPriority, setReactivationPriority] = useState('high');
   const [reactivationOutcome, setReactivationOutcome] = useState('nurture');
   const [reactivatingLeadId, setReactivatingLeadId] = useState<string | null>(null);
+  const [showAddIbModal, setShowAddIbModal] = useState(false);
+  const [newIbName, setNewIbName] = useState('');
+  const [newIbParent, setNewIbParent] = useState('');
+  const [addIbStatus, setAddIbStatus] = useState('');
 
   const postWebhook = async (url: string | undefined, payload: Record<string, unknown>) => {
     if (!url) throw new Error("Missing webhook URL for this action.");
@@ -481,6 +485,50 @@ const OperatorHub = () => {
     } catch (e: any) {
       setActionMessage(e?.message || 'Reactivation failed.');
       setReactivatingLeadId(null);
+    }
+  };
+
+  const createSubIb = async () => {
+    try {
+      setAddIbStatus('');
+      if (!newIbName.trim()) throw new Error('Name is required');
+
+      const uuid = crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+        const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+      });
+
+      const payload: Record<string, any> = {
+        id: uuid,
+        full_name: newIbName.trim(),
+        role: 'ib',
+      };
+      if (newIbParent.trim()) payload.parent_id = newIbParent.trim();
+
+      const res = await fetch(`${supabaseUrl}/rest/v1/users`, {
+        method: 'POST',
+        headers: {
+          apikey: supabaseAnonKey,
+          Authorization: `Bearer ${supabaseAnonKey}`,
+          'Content-Type': 'application/json',
+          Prefer: 'return=minimal',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const err = await res.text();
+        throw new Error(`Failed to create IB: ${res.status} ${err}`);
+      }
+
+      setNewIbName('');
+      setNewIbParent('');
+      setShowAddIbModal(false);
+      setAddIbStatus('IB created successfully.');
+      void loadOwners();
+      setTimeout(() => setAddIbStatus(''), 3000);
+    } catch (e: any) {
+      setAddIbStatus(e?.message || 'Failed to create IB.');
     }
   };
 
@@ -1218,6 +1266,7 @@ const OperatorHub = () => {
             ] as Array<[MasterView,string]>).map(([k,label]) => (
               <Button key={k} size="sm" variant="outline" className={masterView===k? 'queue-tab-active' : 'border-[#8ea24a]/35 bg-[#eef6d4] text-[#2f3012] dark:bg-[#2f3012]/90 dark:text-slate-100'} onClick={() => setMasterView(k)}>{label}</Button>
             ))}
+            <Button size="sm" variant="outline" className="border-[#8ea24a]/35 bg-[#eef6d4] text-[#2f3012] hover:bg-[#e4efc2] dark:bg-[#2f3012]/90 dark:text-slate-100 dark:hover:bg-[#3a3b16]" onClick={() => setShowAddIbModal(true)}>+ Add IB</Button>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-6 gap-2">
             <Input placeholder="Search name, source, owner, stage, follow-up" value={masterSearch} onChange={(e)=>setMasterSearch(e.target.value)} className="md:col-span-2" />
@@ -1345,6 +1394,33 @@ const OperatorHub = () => {
           </div>
         </div>
 
+        {/* Add IB Modal */}
+        {showAddIbModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+            <div className="premium-glass rounded-xl border border-white/20 p-6 w-full max-w-md space-y-4">
+              <div className="text-lg font-semibold">Add Sub-IB / Operator</div>
+              <div className="space-y-2">
+                <Label>Name</Label>
+                <Input placeholder="IB / Operator name" value={newIbName} onChange={(e) => setNewIbName(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label>Parent IB (optional)</Label>
+                <Select value={newIbParent} onValueChange={setNewIbParent}>
+                  <SelectTrigger><SelectValue placeholder="Select parent IB" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">None (top-level)</SelectItem>
+                    {ownerOptions.map(o => <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              {addIbStatus && <div className="text-xs text-muted-foreground">{addIbStatus}</div>}
+              <div className="flex gap-2">
+                <Button size="sm" className="flex-1" disabled={!newIbName.trim()} onClick={() => { void createSubIb(); }}>Create</Button>
+                <Button size="sm" variant="outline" className="flex-1" onClick={() => { setShowAddIbModal(false); setAddIbStatus(''); }}>Cancel</Button>
+              </div>
+            </div>
+          </div>
+        )}
 
       </div>
     </div>
