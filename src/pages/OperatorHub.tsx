@@ -141,7 +141,7 @@ function buildQueueQuery(view: QueueView): URLSearchParams {
   }
 
   if (view === "Stuck") {
-    return new URLSearchParams({ ...base, order: "updated_at.asc", created_at: `lt.${dubaiDayStartIso}`, current_stage: "in.(stuck,kyc_started,inactive,reactivation)" });
+    return new URLSearchParams({ ...base, order: "updated_at.asc", created_at: `lt.${dubaiDayStartIso}`, current_stage: "in.(stuck,kyc_started,inactive)" });
   }
 
   return new URLSearchParams({ ...base, order: "followup_due_at.asc", followup_due_at: "lt.NOW()", current_stage: "not.in.(lost,trading,funded,won)" });
@@ -751,7 +751,7 @@ const OperatorHub = () => {
     const noRecentAction = daysSinceUpdate > 7;
     const noRecentTrading = daysSinceUpdate > 14;
 
-    const baseSegment = ['inactive', 'dormant', 'reactivation', 'stuck'].includes(stage);
+    const baseSegment = ['inactive', 'dormant', 'reactivation'].includes(stage);
     const byOwner = reactivationOwnerFilter === 'all' || r.assigned_to === reactivationOwnerFilter;
     const byAction = !reactivationNoRecentAction || noRecentAction;
     const byTrading = !reactivationNoRecentTrading || noRecentTrading;
