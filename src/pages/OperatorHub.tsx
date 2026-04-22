@@ -819,7 +819,7 @@ const OperatorHub = () => {
 
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-12">
           <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="xl:col-span-4">
-            <Card className="premium-glass h-[calc(100vh-140px)] border-white/20 bg-transparent overflow-hidden flex flex-col">
+            <Card className="premium-glass h-[560px] border-white/20 bg-transparent overflow-hidden flex flex-col">
               <CardHeader>
                 <div className="flex items-center justify-between gap-2">
                   <CardTitle>Lead Queue</CardTitle>
@@ -899,11 +899,11 @@ const OperatorHub = () => {
           </motion.div>
 
           <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="xl:col-span-4">
-            <Card className="premium-glass h-[calc(100vh-180px)] border-white/20 bg-transparent overflow-hidden flex flex-col sticky top-[140px]">
+            <Card className="premium-glass h-[560px] border-white/20 bg-transparent overflow-hidden flex flex-col">
               <CardHeader>
                 <CardTitle>Lead Detail Panel</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3 text-sm flex-1 overflow-y-auto">
+              <CardContent className="space-y-3 text-sm h-[480px] overflow-y-auto">
                 {!selectedLead && <div className="text-muted-foreground">Select a lead from queue.</div>}
                 {selectedLead && (
                   <div className="space-y-3">
@@ -1138,12 +1138,12 @@ const OperatorHub = () => {
           </div>
         </div>
 
-        <div className="premium-glass rounded-xl border border-white/20 px-5 py-4 space-y-3">
+        <div className="premium-glass rounded-xl border border-white/20 px-5 py-4 space-y-3 flex flex-col h-[560px]">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="text-base font-semibold">Master List / Full CRM View</div>
             <div className="text-xs text-muted-foreground">{filteredMasterRows.length} records</div>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2 flex-shrink-0">
             {([
               ['all','All Leads'],
               ['qualified','Qualified'],
@@ -1163,7 +1163,7 @@ const OperatorHub = () => {
             <Select value={filterPriority} onValueChange={setFilterPriority}><SelectTrigger><SelectValue placeholder="Priority" /></SelectTrigger><SelectContent><SelectItem value="all">All priorities</SelectItem><SelectItem value="urgent">urgent</SelectItem><SelectItem value="high">high</SelectItem><SelectItem value="medium">medium</SelectItem><SelectItem value="normal">normal</SelectItem><SelectItem value="low">low</SelectItem></SelectContent></Select>
             <Select value={filterFollowup} onValueChange={setFilterFollowup}><SelectTrigger><SelectValue placeholder="Follow-up status" /></SelectTrigger><SelectContent><SelectItem value="all">All follow-up</SelectItem><SelectItem value="overdue">Overdue</SelectItem><SelectItem value="ontrack">On track</SelectItem></SelectContent></Select>
           </div>
-          <div className="glass-scroll max-h-[280px] overflow-y-auto rounded-md border border-white/20">
+          <div className="flex-1 overflow-y-auto rounded-md border border-white/20">
             <table className="w-full text-sm">
               <thead className="bg-black/10 sticky top-0"><tr className="text-left"><th className="p-2">Name</th><th className="p-2">Source</th><th className="p-2">Owner / IB</th><th className="p-2">Stage</th><th className="p-2">Priority</th><th className="p-2">Follow-up</th></tr></thead>
               <tbody>
