@@ -491,7 +491,8 @@ const OperatorHub = () => {
   const createSubIb = async () => {
     try {
       setAddIbStatus('');
-      if (!newIbName.trim()) throw new Error('Name is required');
+      const name = newIbName.trim();
+      if (!name) throw new Error('Name is required');
 
       const uuid = crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
         const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
@@ -500,7 +501,7 @@ const OperatorHub = () => {
 
       const payload: Record<string, any> = {
         id: uuid,
-        name: newIbName.trim(),
+        name,
         role: 'ib',
       };
       if (newIbParent.trim()) payload.parent_ib_id = newIbParent.trim();
@@ -518,7 +519,7 @@ const OperatorHub = () => {
 
       if (!res.ok) {
         const err = await res.text();
-        throw new Error(`Failed to create IB: ${res.status} ${err}`);
+        throw new Error(`Failed to create IB (${res.status}): ${err}`);
       }
 
       setNewIbName('');
