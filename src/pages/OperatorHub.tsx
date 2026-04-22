@@ -362,6 +362,7 @@ const OperatorHub = () => {
   const [followupNote, setFollowupNote] = useState("");
   const [followupDueAt, setFollowupDueAt] = useState("");
   const [finalOutcome, setFinalOutcome] = useState("");
+  const [recoveryStage, setRecoveryStage] = useState("");
   const [actionBusy, setActionBusy] = useState<"reassign" | "stage" | "followup" | "outcome" | null>(null);
   const [actionMessage, setActionMessage] = useState("");
   const [momentum, setMomentum] = useState<MomentumStats>({ percent: 0, moves: 0, replies: 0, overdueFixed: 0, reachOuts: 0, momentumPercent: 0, reachPercent: 0 });
@@ -1072,6 +1073,35 @@ const OperatorHub = () => {
                     {actionBusy === 'followup' ? 'Sending…' : 'Trigger Follow-up'}
                   </Button>
                 </div>
+
+                {selectedLead && selectedLead.stage.toLowerCase() === 'lost' && (
+                  <div className="premium-glass reassign-glass space-y-2 rounded-md border border-[#b8d965]/40 p-3 text-[#2c3a16] dark:text-slate-100">
+                    <div className="flex items-center gap-1.5">
+                      <Label>Recover Lost Lead</Label>
+                      <InfoHint text="Move lost lead back into active pipeline." />
+                    </div>
+                    <Select value={recoveryStage} onValueChange={setRecoveryStage}>
+                      <SelectTrigger className="glass-carved-field reassign-outline bg-[#dcedb4] text-[#2c3a16] dark:bg-transparent dark:text-slate-100">
+                        <SelectValue placeholder="Select recovery stage" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="reactivation">Reactivation</SelectItem>
+                        <SelectItem value="new_lead">New Lead</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      size="sm"
+                      className="reassign-cta action-cta w-full font-semibold"
+                      disabled={!selectedLead || !recoveryStage || actionBusy !== null}
+                      onClick={() => selectedLead && runAction('stage', {
+                        lead_id: selectedLead.id,
+                        stage: recoveryStage,
+                      }, WEBHOOKS.stage)}
+                    >
+                      {actionBusy === 'stage' ? 'Sending…' : 'Recover Lead'}
+                    </Button>
+                  </div>
+                )}
 
                 <div className="premium-glass reassign-glass space-y-2 rounded-md border p-3 text-[#2c3a16] dark:text-slate-100">
                   <div className="flex items-center gap-1.5">
