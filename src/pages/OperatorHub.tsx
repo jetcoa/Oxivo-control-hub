@@ -927,11 +927,11 @@ const OperatorHub = () => {
           </motion.div>
 
           <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="xl:col-span-4">
-            <Card className="premium-glass h-full border-white/20 bg-transparent">
+            <Card className="premium-glass h-[560px] border-white/20 bg-transparent overflow-hidden flex flex-col">
               <CardHeader>
                 <CardTitle>Action Panel</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4 text-sm">
+              <CardContent className="space-y-4 text-sm flex-1 overflow-y-auto">
                 {!selectedLead && <div className="text-muted-foreground">Select a lead to unlock actions.</div>}
                 {actionMessage && <div className="rounded-md border p-2 text-xs text-muted-foreground">{actionMessage}</div>}
 
