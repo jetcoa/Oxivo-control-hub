@@ -382,6 +382,7 @@ const OperatorHub = () => {
   const [reactivationReassignTo, setReactivationReassignTo] = useState('');
   const [reactivationPriority, setReactivationPriority] = useState('high');
   const [reactivationOutcome, setReactivationOutcome] = useState('nurture');
+  const [reactivatingLeadId, setReactivatingLeadId] = useState<string | null>(null);
 
   const postWebhook = async (url: string | undefined, payload: Record<string, unknown>) => {
     if (!url) throw new Error("Missing webhook URL for this action.");
@@ -454,6 +455,32 @@ const OperatorHub = () => {
       setRefreshTick((n) => n + 1);
     } catch (e: any) {
       setActionMessage(e?.message || 'Priority tag failed.');
+    }
+  };
+
+  const activateLead = async (leadId: string) => {
+    try {
+      setReactivatingLeadId(leadId);
+      setActionMessage('');
+      const twoDaysLater = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000);
+      const followupDueAt = twoDaysLater.toISOString();
+      const res = await fetch(`${supabaseUrl}/rest/v1/leads?id=eq.${leadId}`, {
+        method: 'PATCH',
+        headers: {
+          apikey: supabaseAnonKey,
+          Authorization: `Bearer ${supabaseAnonKey}`,
+          'Content-Type': 'application/json',
+          Prefer: 'return=minimal',
+        },
+        body: JSON.stringify({ current_stage: 'reactivation', followup_due_at: followupDueAt }),
+      });
+      if (!res.ok) throw new Error('Failed to reactivate lead');
+      await refreshQueues(activeView, leadId);
+      setReactivatingLeadId(null);
+      setActionMessage('Lead moved to Reactivation.');
+    } catch (e: any) {
+      setActionMessage(e?.message || 'Reactivation failed.');
+      setReactivatingLeadId(null);
     }
   };
 
@@ -1210,9 +1237,31 @@ const OperatorHub = () => {
                 <th className="sticky top-0 z-20 bg-[#b8d965] p-2 text-[#2f3012]">Stage</th>
                 <th className="sticky top-0 z-20 bg-[#b8d965] p-2 text-[#2f3012]">Priority</th>
                 <th className="sticky top-0 z-20 bg-[#b8d965] p-2 text-[#2f3012]">Follow-up</th>
+                <th className="sticky top-0 z-20 bg-[#b8d965] p-2 text-[#2f3012]">Action</th>
               </tr></thead>
               <tbody>
-                {filteredMasterRows.map((r)=>{const overdue=!!r.followup_due_at && new Date(r.followup_due_at).getTime()<Date.now(); return <tr key={r.id} className="border-t border-white/10"><td className="p-2 font-medium">{r.full_name}</td><td className="p-2">{r.source_channel || '-'}</td><td className="p-2">{ownerLabel(r.assigned_to)}</td><td className="p-2">{r.current_stage || '-'}</td><td className="p-2">{r.priority || '-'}</td><td className="p-2">{overdue ? 'Overdue' : 'On track'}</td></tr>})}
+                {filteredMasterRows.map((r)=>{
+                  const overdue=!!r.followup_due_at && new Date(r.followup_due_at).getTime()<Date.now();
+                  const isLost = String(r.current_stage || '').toLowerCase() === 'lost';
+                  return <tr key={r.id} className="border-t border-white/10">
+                    <td className="p-2 font-medium">{r.full_name}</td>
+                    <td className="p-2">{r.source_channel || '-'}</td>
+                    <td className="p-2">{ownerLabel(r.assigned_to)}</td>
+                    <td className="p-2">{r.current_stage || '-'}</td>
+                    <td className="p-2">{r.priority || '-'}</td>
+                    <td className="p-2">{overdue ? 'Overdue' : 'On track'}</td>
+                    <td className="p-2">
+                      {isLost && (
+                        <Button size="sm" variant="outline" className="h-7 px-2 text-xs border-[#8ea24a]/35 bg-[#eef6d4] text-[#2f3012] hover:bg-[#e4efc2] dark:bg-[#2f3012]/90 dark:text-slate-100 dark:hover:bg-[#3a3b16]"
+                          disabled={reactivatingLeadId === r.id}
+                          onClick={() => activateLead(r.id)}
+                        >
+                          {reactivatingLeadId === r.id ? 'Moving…' : 'Reactivate'}
+                        </Button>
+                      )}
+                    </td>
+                  </tr>;
+                })}
               </tbody>
             </table>
           </div>
