@@ -880,6 +880,14 @@ const OperatorHub = () => {
 
   const stageIn = (stage: string, values: string[]) => values.includes(stage);
 
+  const queueLeadIds = useMemo(() => {
+    const ids = new Set<string>();
+    Object.values(leadData).forEach((arr) => {
+      arr.forEach((l) => ids.add(l.id));
+    });
+    return ids;
+  }, [leadData]);
+
   const filteredMasterRows = masterRows.filter((r) => {
     const stage = String(r.current_stage || '').toLowerCase();
     const priority = String(r.priority || '').toLowerCase();
@@ -1434,6 +1442,7 @@ const OperatorHub = () => {
                   const isLost = String(r.current_stage || '').toLowerCase() === 'lost';
                   const allowedNext = getAllowedForwardStages(String(r.current_stage || '').toLowerCase());
                   const isEditing = editingStageId === r.id;
+                  const inAnyQueue = queueLeadIds.has(r.id);
                   return <tr key={r.id} className="border-t border-white/10">
                     <td className="p-2 font-medium">{r.full_name}</td>
                     <td className="p-2">{r.source_channel || '-'}</td>
@@ -1447,34 +1456,41 @@ const OperatorHub = () => {
                     <td className="p-2">{r.priority || '-'}</td>
                     <td className="p-2">{overdue ? 'Overdue' : 'On track'}</td>
                     <td className="p-2">
-                      {isEditing ? (
-                        <div className="flex flex-col gap-1">
-                          <Select value={editStageValue} onValueChange={setEditStageValue}>
-                            <SelectTrigger className="h-7 text-xs">
-                              <SelectValue placeholder="Select stage" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {allowedNext.map((s) => (
-                                <SelectItem key={s} value={s}>{LIFECYCLE_STAGES.find(([v]) => v === s)?.[1] || s}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <div className="flex gap-1">
-                            <Button size="sm" className="h-6 text-xs" disabled={actionBusy !== null || !editStageValue} onClick={() => {
-                              if (editStageValue) {
-                                void changeStage(r.id, editStageValue);
-                              }
-                            }}>Set</Button>
-                            <Button size="sm" variant="outline" className="h-6 text-xs" onClick={() => { setEditingStageId(null); setEditStageValue(''); }}>Cancel</Button>
+                      {isLost ? (
+                        <Button size="sm" variant="outline" className="h-7 px-2 text-xs border-[#8ea24a]/35 bg-[#eef6d4] text-[#2f3012] hover:bg-[#e4efc2] dark:bg-[#2f3012]/90 dark:text-slate-100 dark:hover:bg-[#3a3b16]"
+                          disabled={reactivatingLeadId === r.id}
+                          onClick={() => activateLead(r.id)}
+                        >
+                          {reactivatingLeadId === r.id ? 'Moving…' : 'Reactivate'}
+                        </Button>
+                      ) : !inAnyQueue && allowedNext.length > 0 ? (
+                        isEditing ? (
+                          <div className="flex flex-col gap-1">
+                            <Select value={editStageValue} onValueChange={setEditStageValue}>
+                              <SelectTrigger className="h-7 text-xs">
+                                <SelectValue placeholder="Select stage" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {allowedNext.map((s) => (
+                                  <SelectItem key={s} value={s}>{LIFECYCLE_STAGES.find(([v]) => v === s)?.[1] || s}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <div className="flex gap-1">
+                              <Button size="sm" className="h-6 text-xs" disabled={actionBusy !== null || !editStageValue} onClick={() => {
+                                if (editStageValue) {
+                                  void changeStage(r.id, editStageValue);
+                                }
+                              }}>Set</Button>
+                              <Button size="sm" variant="outline" className="h-6 text-xs" onClick={() => { setEditingStageId(null); setEditStageValue(''); }}>Cancel</Button>
+                            </div>
                           </div>
-                        </div>
-                      ) : (
-                        allowedNext.length > 0 && (
+                        ) : (
                           <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => { setEditingStageId(r.id); setEditStageValue(''); }}>
                             Change Stage
                           </Button>
                         )
-                      )}
+                      ) : null}
                     </td>
                   </tr>;
                 })}
