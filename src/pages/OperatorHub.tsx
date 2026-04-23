@@ -590,9 +590,10 @@ const OperatorHub = () => {
         id: uuid,
         name,
         role: 'ib',
-        ib_type: newIbParent && newIbParent !== 'none' ? 'sub-ib' : 'master-ib',
       };
-      if (newIbParent && newIbParent !== 'none') payload.parent_ib_id = newIbParent.trim();
+      if (newIbParent && newIbParent !== 'none') {
+        payload.parent_ib_id = newIbParent.trim();
+      }
 
       const res = await fetch(`${supabaseUrl}/rest/v1/users`, {
         method: 'POST',
@@ -628,9 +629,10 @@ const OperatorHub = () => {
 
       const payload: Record<string, any> = {
         role: 'ib',
-        ib_type: newIbParent && newIbParent !== 'none' ? 'sub-ib' : 'master-ib',
       };
-      if (newIbParent && newIbParent !== 'none') payload.parent_ib_id = newIbParent.trim();
+      if (newIbParent && newIbParent !== 'none') {
+        payload.parent_ib_id = newIbParent.trim();
+      }
 
       const res = await fetch(`${supabaseUrl}/rest/v1/users?id=eq.${selectedAssignUserId}`, {
         method: 'PATCH',
