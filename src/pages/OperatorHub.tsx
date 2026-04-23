@@ -451,6 +451,10 @@ const OperatorHub = () => {
   };
 
   useEffect(() => {
+    refreshOwnerList();
+  }, []);
+
+  useEffect(() => {
     if (selectedLead) {
       const action = computeNextBestAction(selectedLead);
       setNextBestAction(action);
@@ -610,7 +614,7 @@ const OperatorHub = () => {
       setNewIbParent('');
       setShowAddIbModal(false);
       setAddIbStatus('IB created successfully.');
-      void loadOwners();
+      void refreshOwnerList();
       setTimeout(() => setAddIbStatus(''), 3000);
     } catch (e: any) {
       setAddIbStatus(e?.message || 'Failed to create IB.');
@@ -648,7 +652,7 @@ const OperatorHub = () => {
       setNewIbParent('');
       setShowAddIbModal(false);
       setAddIbStatus('IB assigned successfully.');
-      void loadOwners();
+      void refreshOwnerList();
       setTimeout(() => setAddIbStatus(''), 3000);
     } catch (e: any) {
       setAddIbStatus(e?.message || 'Failed to assign IB.');
