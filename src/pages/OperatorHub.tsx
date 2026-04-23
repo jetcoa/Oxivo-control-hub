@@ -412,6 +412,28 @@ const OperatorHub = () => {
     }
   };
 
+  const getAllowedForwardStages = (current: string): string[] => {
+    const allStages = LIFECYCLE_STAGES.map(([k]) => k);
+    const targetSet = new Set<string>();
+    const visited = new Set<string>();
+
+    const dfs = (stage: string) => {
+      if (visited.has(stage)) return;
+      visited.add(stage);
+      const next = STAGE_TRANSITIONS[stage] || [];
+      for (const s of next) {
+        if (!visited.has(s)) {
+          targetSet.add(s);
+          dfs(s);
+        }
+      }
+    };
+
+    dfs(current);
+    // Return in original lifecycle order, excluding past/current
+    return allStages.filter((s) => targetSet.has(s) && allStages.indexOf(s) > allStages.indexOf(current));
+  };
+
   const computeNextBestAction = (lead: QueueLead | null) => {
     if (!lead) return '';
     const stage = lead.stage.toLowerCase();
@@ -1410,7 +1432,7 @@ const OperatorHub = () => {
                 {filteredMasterRows.map((r)=>{
                   const overdue=!!r.followup_due_at && new Date(r.followup_due_at).getTime()<Date.now();
                   const isLost = String(r.current_stage || '').toLowerCase() === 'lost';
-                  const allowedNext = STAGE_TRANSITIONS[r.current_stage?.toLowerCase() || ''] || [];
+                  const allowedNext = getAllowedForwardStages(String(r.current_stage || '').toLowerCase());
                   const isEditing = editingStageId === r.id;
                   return <tr key={r.id} className="border-t border-white/10">
                     <td className="p-2 font-medium">{r.full_name}</td>
