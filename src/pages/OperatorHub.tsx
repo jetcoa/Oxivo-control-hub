@@ -389,6 +389,8 @@ const OperatorHub = () => {
   const [nextBestAction, setNextBestAction] = useState<string>('');
   const [actionFaded, setActionFaded] = useState(false);
   const fadeRef = useRef<NodeJS.Timeout | null>(null);
+  const [editingStageId, setEditingStageId] = useState<string | null>(null);
+  const [editStageValue, setEditStageValue] = useState('');
   const [showAddIbModal, setShowAddIbModal] = useState(false);
   const [newIbName, setNewIbName] = useState('');
   const [newIbParent, setNewIbParent] = useState('');
@@ -481,6 +483,22 @@ const OperatorHub = () => {
       setActionMessage(err?.message || `Failed to run ${action} action.`);
     } finally {
       setActionBusy(null);
+    }
+  };
+
+  const changeStage = async (leadId: string, stage: string) => {
+    try {
+      setActionBusy('stage');
+      setActionMessage('');
+      await postWebhook(WEBHOOKS.stage, { lead_id: leadId, stage });
+      await refreshQueues(activeView, leadId);
+      setActionMessage('Stage updated.');
+    } catch (e: any) {
+      setActionMessage(e?.message || 'Failed to update stage.');
+    } finally {
+      setActionBusy(null);
+      setEditingStageId(null);
+      setEditStageValue('');
     }
   };
 
@@ -1392,21 +1410,48 @@ const OperatorHub = () => {
                 {filteredMasterRows.map((r)=>{
                   const overdue=!!r.followup_due_at && new Date(r.followup_due_at).getTime()<Date.now();
                   const isLost = String(r.current_stage || '').toLowerCase() === 'lost';
+                  const allowedNext = STAGE_TRANSITIONS[r.current_stage?.toLowerCase() || ''] || [];
+                  const isEditing = editingStageId === r.id;
                   return <tr key={r.id} className="border-t border-white/10">
                     <td className="p-2 font-medium">{r.full_name}</td>
                     <td className="p-2">{r.source_channel || '-'}</td>
                     <td className="p-2">{ownerLabel(r.assigned_to)}</td>
-                    <td className="p-2">{r.current_stage || '-'}</td>
+                    <td className="p-2">
+                      {r.current_stage || '-'}
+                      {['lost','inactive','dormant','reactivation'].includes(String(r.current_stage||'').toLowerCase()) && (
+                        <InfoHint text={r.current_stage?.toLowerCase() === 'lost' ? 'Lost = deal closed with competitor or no further action expected.' : 'Inactive/Dormant/Reactivation = client account quiet but potentially recoverable.'} />
+                      )}
+                    </td>
                     <td className="p-2">{r.priority || '-'}</td>
                     <td className="p-2">{overdue ? 'Overdue' : 'On track'}</td>
                     <td className="p-2">
-                      {isLost && (
-                        <Button size="sm" variant="outline" className="h-7 px-2 text-xs border-[#8ea24a]/35 bg-[#eef6d4] text-[#2f3012] hover:bg-[#e4efc2] dark:bg-[#2f3012]/90 dark:text-slate-100 dark:hover:bg-[#3a3b16]"
-                          disabled={reactivatingLeadId === r.id}
-                          onClick={() => activateLead(r.id)}
-                        >
-                          {reactivatingLeadId === r.id ? 'Moving…' : 'Reactivate'}
-                        </Button>
+                      {isEditing ? (
+                        <div className="flex flex-col gap-1">
+                          <Select value={editStageValue} onValueChange={setEditStageValue}>
+                            <SelectTrigger className="h-7 text-xs">
+                              <SelectValue placeholder="Select stage" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {allowedNext.map((s) => (
+                                <SelectItem key={s} value={s}>{LIFECYCLE_STAGES.find(([v]) => v === s)?.[1] || s}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <div className="flex gap-1">
+                            <Button size="sm" className="h-6 text-xs" disabled={actionBusy !== null || !editStageValue} onClick={() => {
+                              if (editStageValue) {
+                                void changeStage(r.id, editStageValue);
+                              }
+                            }}>Set</Button>
+                            <Button size="sm" variant="outline" className="h-6 text-xs" onClick={() => { setEditingStageId(null); setEditStageValue(''); }}>Cancel</Button>
+                          </div>
+                        </div>
+                      ) : (
+                        allowedNext.length > 0 && (
+                          <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => { setEditingStageId(r.id); setEditStageValue(''); }}>
+                            Change Stage
+                          </Button>
+                        )
                       )}
                     </td>
                   </tr>;
