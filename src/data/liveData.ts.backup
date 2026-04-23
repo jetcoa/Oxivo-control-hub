@@ -1,0 +1,58 @@
+import { supabase } from '@/lib/supabase';
+import type { Agent, TaskItem, LogEntry, CouncilSession, Meeting } from './mockData';
+
+export async function fetchAgents(): Promise<Agent[]> {
+  const { data, error } = await supabase.from('agents').select('*').order('name');
+  if (error) throw error;
+  return (data || []).map((a: any) => ({
+    id: a.id,
+    name: a.name,
+    emoji: a.emoji || '🤖',
+    type: a.type || 'Agent',
+    role: a.role || '',
+    accentColor: a.accent_color || '#8b5cf6',
+    status: a.status || 'idle',
+    currentActivity: a.current_activity || 'Idle',
+    lastSeen: a.last_seen || '',
+    tasksCompleted: a.tasks_completed || 0,
+    accuracy: a.accuracy || 0,
+    skills: a.skills || [],
+  }));
+}
+
+export async function fetchTasks(): Promise<TaskItem[]> {
+  const { data, error } = await supabase.from('tasks').select('*').order('created_at', { ascending: false });
+  if (error) throw error;
+  return (data || []).map((t: any) => ({
+    id: t.id,
+    title: t.title,
+    agentId: t.agent_id,
+    priority: t.priority || 'medium',
+    progress: t.progress || 0,
+    column: t.column || 'todo',
+  }));
+}
+
+export async function fetchLogs(): Promise<LogEntry[]> {
+  const { data, error } = await supabase.from('logs').select('*').order('timestamp', { ascending: false });
+  if (error) throw error;
+  return (data || []).map((l: any) => ({
+    id: l.id,
+    agentId: l.agent_id,
+    category: l.category || 'general',
+    message: l.message,
+    timestamp: l.timestamp,
+  }));
+}
+
+export async function fetchCouncilSessions(): Promise<CouncilSession[]> {
+  const { data, error } = await supabase.from('council_sessions').select('*').order('created_at', { ascending: false });
+  if (error) throw error;
+  return (data || []) as CouncilSession[];
+}
+
+export async function fetchMeetings(): Promise<Meeting[]> {
+  const { data, error } = await supabase.from('meetings').select('*').order('date', { ascending: false });
+  if (error) throw error;
+  return (data || []) as Meeting[];
+}

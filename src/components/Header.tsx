@@ -1,7 +1,8 @@
 import { Settings, Moon, Sun } from "lucide-react";
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
-import logo from "@/assets/axivo-logo.png";
+import logoDark from "@/assets/axivo-logo-dark.png";
+import logoLight from "@/assets/axivo-logo-light.png";
 
 const Header = () => {
   const [dark, setDark] = useState(() => {
@@ -27,10 +28,10 @@ const Header = () => {
       style={{ borderLeft: "3px solid hsl(160, 84%, 39%)", boxShadow: "inset 4px 0 12px rgba(16,185,129,0.10)" }}
     >
       <div className="flex items-center gap-3">
-        <img src={logo} alt="AXIVO logo" className="h-9 w-9 rounded-lg bg-foreground/90 p-1" />
-        <div>
-          <h1 className="text-xl font-bold tracking-tight">AXIVO</h1>
-          <p className="text-xs text-muted-foreground">AI Agent Command Center</p>
+        <img src={dark ? logoLight : logoDark} alt="AXIVO logo" className="h-9 w-9" />
+        <div className="leading-none">
+          <h1 className="text-2xl font-bold tracking-tight">AXIVO</h1>
+          <p className="-mt-[5px] text-xs text-muted-foreground">AI Agent Command Center</p>
         </div>
       </div>
       <div className="flex items-center gap-3 text-sm">

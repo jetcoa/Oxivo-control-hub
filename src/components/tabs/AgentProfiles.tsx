@@ -36,7 +36,7 @@ const AgentProfiles = () => {
           <span className="text-muted-foreground">·</span>
           <span className="font-mono text-xs">{a.tasksCompleted} tasks</span>
           <span className="text-muted-foreground">·</span>
-          <span className="font-mono text-xs">{a.accuracy}% acc</span>
+          <span className="font-mono text-xs">{a.accuracy}% completion</span>
         </div>
         <div className="flex flex-wrap gap-1.5 mb-5">
           {a.skills.map((s) => (
