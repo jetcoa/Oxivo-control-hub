@@ -690,6 +690,8 @@ const OperatorHub = () => {
       setAddIbStatus('');
       if (!selectedAssignUserId) throw new Error('Select an IB to assign');
 
+      const selectedUser = ownerOptions.find((o) => o.id === selectedAssignUserId);
+
       const payload: Record<string, any> = {
         role: 'ib',
         ib_type: newIbParent && newIbParent !== 'none' ? 'sub-ib' : 'master-ib',
@@ -712,13 +714,54 @@ const OperatorHub = () => {
         throw new Error(`Failed to assign IB (${res.status}): ${err}`);
       }
 
+      // Auto-sync lead ownership for matching lead names so Master List reflects the IB assignment.
+      let syncedCount = 0;
+      if (selectedUser?.name) {
+        const leadQuery = new URLSearchParams({
+          select: 'id,full_name',
+          full_name: `ilike.${selectedUser.name}`,
+          limit: '200',
+        });
+
+        const leadsRes = await fetch(`${supabaseUrl}/rest/v1/leads?${leadQuery.toString()}`, {
+          headers: {
+            apikey: supabaseAnonKey,
+            Authorization: `Bearer ${supabaseAnonKey}`,
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (leadsRes.ok) {
+          const leadRows = (await leadsRes.json()) as Array<{ id: string; full_name?: string }>;
+          const exact = leadRows.filter((r) => String(r.full_name || '').trim().toLowerCase() === selectedUser.name.trim().toLowerCase());
+          const target = exact.length > 0 ? exact : leadRows;
+
+          await Promise.all(
+            target.map(async (lead) => {
+              const upd = await fetch(`${supabaseUrl}/rest/v1/leads?id=eq.${lead.id}`, {
+                method: 'PATCH',
+                headers: {
+                  apikey: supabaseAnonKey,
+                  Authorization: `Bearer ${supabaseAnonKey}`,
+                  'Content-Type': 'application/json',
+                  Prefer: 'return=minimal',
+                },
+                body: JSON.stringify({ assigned_to: selectedAssignUserId }),
+              });
+              if (upd.ok) syncedCount += 1;
+            })
+          );
+        }
+      }
+
       setSelectedAssignUserId('');
       setNewIbParent('');
       setParentIbSearch('');
       setShowAddIbModal(false);
-      setAddIbStatus('IB assigned successfully.');
+      setAddIbStatus(syncedCount > 0 ? `IB assigned. ${syncedCount} lead(s) owner-synced.` : 'IB assigned successfully.');
+      await refreshQueues(activeView);
       void refreshOwnerList();
-      setTimeout(() => setAddIbStatus(''), 3000);
+      setTimeout(() => setAddIbStatus(''), 3500);
     } catch (e: any) {
       setAddIbStatus(e?.message || 'Failed to assign IB.');
     }
