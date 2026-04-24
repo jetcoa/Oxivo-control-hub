@@ -49,11 +49,11 @@ const App = () => (
       <ThemeToggle />
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<AgentCenterOld />} />
+          <Route path="/" element={<OperatorHub />} />
+          <Route path="/operator-hub" element={<OperatorHub />} />
+          <Route path="/legacy" element={<AgentCenterOld />} />
           <Route path="/agent-center" element={<AgentCenterOld />} />
           <Route path="/agent-center-old" element={<AgentCenterOld />} />
-          <Route path="/legacy" element={<OperatorHub />} />
-          <Route path="/operator-hub" element={<OperatorHub />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
