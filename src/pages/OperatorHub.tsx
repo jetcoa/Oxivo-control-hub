@@ -714,7 +714,8 @@ const OperatorHub = () => {
         throw new Error(`Failed to assign IB (${res.status}): ${err}`);
       }
 
-      // Auto-sync lead ownership for matching lead names so Master List reflects the IB assignment.
+      // Auto-sync lead ownership for matching lead names so Master List reflects Parent IB selection.
+      const ownerTargetId = newIbParent && newIbParent !== 'none' ? newIbParent.trim() : selectedAssignUserId;
       let syncedCount = 0;
       if (selectedUser?.name) {
         const leadQuery = new URLSearchParams({
@@ -746,7 +747,7 @@ const OperatorHub = () => {
                   'Content-Type': 'application/json',
                   Prefer: 'return=minimal',
                 },
-                body: JSON.stringify({ assigned_to: selectedAssignUserId }),
+                body: JSON.stringify({ assigned_to: ownerTargetId }),
               });
               if (upd.ok) syncedCount += 1;
             })
@@ -758,7 +759,7 @@ const OperatorHub = () => {
       setNewIbParent('');
       setParentIbSearch('');
       setShowAddIbModal(false);
-      setAddIbStatus(syncedCount > 0 ? `IB assigned. ${syncedCount} lead(s) owner-synced.` : 'IB assigned successfully.');
+      setAddIbStatus(syncedCount > 0 ? `IB assigned. ${syncedCount} lead(s) owner-synced${ownerTargetId !== selectedAssignUserId ? ' to Parent IB' : ''}.` : 'IB assigned successfully.');
       await refreshQueues(activeView);
       void refreshOwnerList();
       setTimeout(() => setAddIbStatus(''), 3500);
