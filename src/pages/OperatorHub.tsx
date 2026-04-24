@@ -400,12 +400,7 @@ const OperatorHub = () => {
   const [selectedAssignUserId, setSelectedAssignUserId] = useState('');
 
   const parentIbOptions = useMemo(
-    () => ownerOptions.filter((o) => {
-      const role = String(o.role || '').toLowerCase();
-      const ibType = String(o.ibType || '').toLowerCase();
-      const hasNoParent = !o.parentId;
-      return role === 'ib' && (ibType === 'master-ib' || hasNoParent);
-    }),
+    () => ownerOptions.filter((o) => String(o.role || '').toLowerCase() === 'ib'),
     [ownerOptions]
   );
 
