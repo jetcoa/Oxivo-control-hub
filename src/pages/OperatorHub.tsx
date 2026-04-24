@@ -1081,7 +1081,7 @@ const OperatorHub = () => {
             </div>
           </div>
 
-          <div className="mt-2 text-[11px] font-medium tracking-wide text-[#b8d965]">Excuses don’t close. Follow-up does.</div>
+          <div className="mt-2 text-center text-[11px] font-semibold tracking-wider uppercase text-[#b8d965]">EXCUSES DON’T CLOSE. FOLLOW-UP DOES.</div>
         </div>
 
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-12">
