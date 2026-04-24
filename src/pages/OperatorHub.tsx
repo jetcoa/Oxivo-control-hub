@@ -363,7 +363,6 @@ const OperatorHub = () => {
   const [nextStage, setNextStage] = useState("");
   const [followupNote, setFollowupNote] = useState("");
   const [followupDueAt, setFollowupDueAt] = useState("");
-  const [finalOutcome, setFinalOutcome] = useState("");
   const [recoveryStage, setRecoveryStage] = useState("");
   const [actionBusy, setActionBusy] = useState<"reassign" | "stage" | "followup" | "outcome" | null>(null);
   const [actionMessage, setActionMessage] = useState("");
@@ -1434,40 +1433,7 @@ const OperatorHub = () => {
                   </div>
                 )}
 
-                <div className="premium-glass reassign-glass space-y-2 rounded-md border p-3 text-[#2c3a16] dark:text-slate-100">
-                  <div className="flex items-center gap-1.5">
-                    <Label>Mark as</Label>
-                    <InfoHint text="Lost = no deal. Won = closed client. Nurture = re-engage later." />
-                  </div>
-                  <Select value={finalOutcome} onValueChange={setFinalOutcome} disabled={!selectedLead}>
-                    <SelectTrigger className="glass-carved-field reassign-outline bg-[#dcedb4] text-[#2c3a16] dark:bg-transparent dark:text-slate-100">
-                      <SelectValue placeholder="Select final outcome" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="lost">Lost</SelectItem>
-                      <SelectItem value="won">Won</SelectItem>
-                      <SelectItem value="nurture">Nurture</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    className="reassign-cta w-full font-semibold"
-                    disabled={!selectedLead || !finalOutcome || actionBusy !== null}
-                    onClick={() => {
-                      if (!selectedLead) return;
-                      const outcomeEndpoint =
-                        WEBHOOKS.outcome ||
-                        (finalOutcome === 'lost' ? WEBHOOKS.lost : finalOutcome === 'won' ? WEBHOOKS.won : WEBHOOKS.nurture);
-                      void runAction('outcome', {
-                        lead_id: selectedLead.id,
-                        outcome: finalOutcome,
-                      }, outcomeEndpoint);
-                    }}
-                  >
-                    {actionBusy === 'outcome' ? 'Sending…' : 'Save Outcome'}
-                  </Button>
-                </div>
+
               </CardContent>
             </Card>
           </motion.div>
