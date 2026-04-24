@@ -1016,22 +1016,18 @@ const OperatorHub = () => {
               <p className="text-xs text-muted-foreground">One action keeps it moving.</p>
             </div>
             <div className="md:col-span-5">
-              <div className="mb-1 text-xs font-medium">Today’s progress</div>
+              <div className="mb-1 text-xs font-medium">Today’s progress (Momentum only)</div>
               <div className="relative mt-6">
                 <div className="pointer-events-none absolute -top-6 left-0 right-0">
                   <span
                     className="absolute rounded-md border border-[#8ea24a]/35 bg-[#2f3012]/80 px-2 py-0.5 text-xs text-[#b8d965]"
-                    style={{ left: `${Math.max(12, momentum.momentumPercent)}%`, transform: 'translateX(-100%)' }}
+                    style={{ left: `${Math.max(12, Math.round((momentum.momentumPercent / 70) * 100))}%`, transform: 'translateX(-100%)' }}
                   >
-                    70% Momentum
-                  </span>
-                  <span className="absolute right-0 rounded-md border border-[#8ea24a]/35 bg-[#2f3012]/80 px-2 py-0.5 text-xs text-[#e3c54d]">
-                    30% Outreach
+                    Momentum target: {momentum.momentumPercent}/70
                   </span>
                 </div>
                 <div className="flex h-3 w-full overflow-hidden rounded-full border border-white/10 bg-black/25">
-                  <div className="h-3 bg-[#b8d965]" style={{ width: `${momentum.momentumPercent}%` }} />
-                  <div className="h-3 bg-[#e3c54d]" style={{ width: `${momentum.reachPercent}%` }} />
+                  <div className="h-3 bg-[#b8d965]" style={{ width: `${Math.round((momentum.momentumPercent / 70) * 100)}%` }} />
                 </div>
               </div>
             </div>
