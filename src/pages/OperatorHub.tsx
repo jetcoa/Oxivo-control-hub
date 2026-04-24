@@ -1052,37 +1052,39 @@ const OperatorHub = () => {
           </div>
         </div>
 
-        <div className="premium-glass rounded-xl border border-white/20 px-5 py-4">
-          <div className="mb-3 flex items-center justify-between">
+        <div className="premium-glass rounded-xl border border-white/20 px-5 py-3">
+          <div className="mb-2 flex items-center justify-between">
             <div className="text-sm font-semibold uppercase tracking-wide">Today’s 3 Moves (Playbook)</div>
             <div className="text-xs text-muted-foreground">This drives your results.</div>
           </div>
 
           <div className="grid grid-cols-1 gap-2 md:grid-cols-4">
-            <div className="rounded-lg border border-white/20 p-3">
-              <div className="flex items-center gap-1 text-xs text-muted-foreground"><span className="font-semibold text-[#b8d965]">Today’s Moves</span> (Actions) <InfoHint text="Counts any logged action completed today." /></div>
+            <div className="flex min-h-[112px] flex-col justify-between rounded-lg border border-white/20 p-2.5">
+              <div className="flex items-center gap-1 text-[11px] leading-tight text-muted-foreground"><span className="font-semibold text-[#b8d965]">Today’s Moves</span> (Actions) <InfoHint text="Counts any logged action completed today." /></div>
               <div className="mt-1 text-3xl font-semibold">{momentum.moves}<span className="text-lg text-[#b8d965]">/8</span></div>
-              <div className="mt-1 text-xs text-muted-foreground">{Math.max(0, 8 - momentum.moves)} more to target</div>
+              <div className="mt-0.5 text-xs text-muted-foreground">{Math.max(0, 8 - momentum.moves)} more to target</div>
             </div>
 
-            <div className="rounded-lg border border-white/20 p-3">
-              <div className="flex items-center gap-1 text-xs text-muted-foreground"><span className="font-semibold text-[#b8d965]">Replies Sent</span> (Follow-ups) <InfoHint text="Counts follow-up completed today." /></div>
+            <div className="flex min-h-[112px] flex-col justify-between rounded-lg border border-white/20 p-2.5">
+              <div className="flex items-center gap-1 text-[11px] leading-tight text-muted-foreground"><span className="font-semibold text-[#b8d965]">Replies Sent</span> (Follow-ups) <InfoHint text="Counts follow-up completed today." /></div>
               <div className="mt-1 text-3xl font-semibold">{momentum.replies}<span className="text-lg text-[#b8d965]">/3</span></div>
-              <div className="mt-1 text-xs text-muted-foreground">{momentum.replies >= 3 ? 'Target met' : `${3 - momentum.replies} more to target`}</div>
+              <div className="mt-0.5 text-xs text-muted-foreground">{momentum.replies >= 3 ? 'Target met' : `${3 - momentum.replies} more to target`}</div>
             </div>
 
-            <div className="rounded-lg border border-white/20 p-3">
-              <div className="flex items-center gap-1 text-xs text-muted-foreground"><span className="font-semibold text-[#b8d965]">Overdue Fixed</span> <InfoHint text="Counts leads that leave overdue status today." /></div>
+            <div className="flex min-h-[112px] flex-col justify-between rounded-lg border border-white/20 p-2.5">
+              <div className="flex items-center gap-1 text-[11px] leading-tight text-muted-foreground"><span className="font-semibold text-[#b8d965]">Overdue Fixed</span> <InfoHint text="Counts leads that leave overdue status today." /></div>
               <div className="mt-1 text-3xl font-semibold">{momentum.overdueFixed}<span className="text-lg text-[#b8d965]">/2</span></div>
-              <div className="mt-1 text-xs text-muted-foreground">{momentum.overdueFixed >= 2 ? 'Target met' : `${2 - momentum.overdueFixed} more to target`}</div>
+              <div className="mt-0.5 text-xs text-muted-foreground">{momentum.overdueFixed >= 2 ? 'Target met' : `${2 - momentum.overdueFixed} more to target`}</div>
             </div>
 
-            <div className="rounded-lg border border-white/20 p-3">
-              <div className="flex items-center gap-1 text-xs text-[#e3c54d]"><span className="font-semibold">Complete the day</span> <span className="text-muted-foreground">(Outreach)</span> <InfoHint text="Counts outbound to new prospects only." /></div>
-              <div className={`mt-2 text-3xl font-semibold ${momentum.reachOuts === 0 ? '' : 'text-[#e3c54d]'}`}>{momentum.reachOuts}<span className="text-lg text-[#e3c54d]">/3</span></div>
-              <div className="mt-1 text-xs text-muted-foreground">{momentum.reachOuts >= 3 ? 'Day complete at 100%' : `${3 - momentum.reachOuts} more to complete the day`}</div>
+            <div className="flex min-h-[112px] flex-col justify-between rounded-lg border border-white/20 p-2.5">
+              <div className="flex items-center gap-1 text-[11px] leading-tight text-[#e3c54d]"><span className="font-semibold">Complete the day</span> <span className="text-muted-foreground">(Outreach)</span> <InfoHint text="Counts outbound to new prospects only." /></div>
+              <div className={`mt-1 text-3xl font-semibold ${momentum.reachOuts === 0 ? '' : 'text-[#e3c54d]'}`}>{momentum.reachOuts}<span className="text-lg text-[#e3c54d]">/3</span></div>
+              <div className="mt-0.5 text-xs text-muted-foreground">{momentum.reachOuts >= 3 ? 'Day complete at 100%' : `${3 - momentum.reachOuts} more to complete the day`}</div>
             </div>
           </div>
+
+          <div className="mt-2 text-[11px] font-medium tracking-wide text-[#b8d965]">Excuses don’t close. Follow-up does.</div>
         </div>
 
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-12">
