@@ -1642,9 +1642,14 @@ const OperatorHub = () => {
                     <Input placeholder="Type to search..." value={assignIbSearch} onChange={(e) => setAssignIbSearch(e.target.value)} />
                   </div>
                   <div className="max-h-40 overflow-y-auto rounded-md border border-white/20">
-                    {ownerOptions
-                      .filter(o => o.name.toLowerCase().includes(assignIbSearch.toLowerCase()))
-                      .map(o => (
+                    {assignIbSearch.trim().length === 0 ? (
+                      <div className="p-2 text-xs text-muted-foreground">Start typing to search users…</div>
+                    ) : (() => {
+                      const matched = ownerOptions.filter(o => o.name.toLowerCase().includes(assignIbSearch.toLowerCase()));
+                      if (matched.length === 0) {
+                        return <div className="p-2 text-xs text-muted-foreground">No user found for "{assignIbSearch}"</div>;
+                      }
+                      return matched.map(o => (
                         <div
                           key={o.id}
                           className={`flex items-center justify-between p-2 hover:bg-black/10 cursor-pointer ${selectedAssignUserId===o.id?'bg-black/5':''}`}
@@ -1656,7 +1661,8 @@ const OperatorHub = () => {
                           <span>{o.name}</span>
                           <span className="text-xs text-muted-foreground">{o.ibType || o.role || 'user'}</span>
                         </div>
-                      ))}
+                      ));
+                    })()}
                   </div>
                   <div className="space-y-2">
                     <Label>Parent IB (optional)</Label>
