@@ -399,6 +399,16 @@ const OperatorHub = () => {
   const [assignIbSearch, setAssignIbSearch] = useState('');
   const [selectedAssignUserId, setSelectedAssignUserId] = useState('');
 
+  const parentIbOptions = useMemo(
+    () => ownerOptions.filter((o) => {
+      const role = String(o.role || '').toLowerCase();
+      const ibType = String(o.ibType || '').toLowerCase();
+      const hasNoParent = !o.parentId;
+      return role === 'ib' && (ibType === 'master-ib' || hasNoParent);
+    }),
+    [ownerOptions]
+  );
+
   const postWebhook = async (url: string | undefined, payload: Record<string, unknown>) => {
     if (!url) throw new Error("Missing webhook URL for this action.");
     const res = await fetch(url, {
@@ -598,10 +608,9 @@ const OperatorHub = () => {
         id: uuid,
         name,
         role: 'ib',
+        ib_type: newIbParent && newIbParent !== 'none' ? 'sub-ib' : 'master-ib',
+        parent_ib_id: newIbParent && newIbParent !== 'none' ? newIbParent.trim() : null,
       };
-      if (newIbParent && newIbParent !== 'none') {
-        payload.parent_ib_id = newIbParent.trim();
-      }
 
       const res = await fetch(`${supabaseUrl}/rest/v1/users`, {
         method: 'POST',
@@ -637,10 +646,9 @@ const OperatorHub = () => {
 
       const payload: Record<string, any> = {
         role: 'ib',
+        ib_type: newIbParent && newIbParent !== 'none' ? 'sub-ib' : 'master-ib',
+        parent_ib_id: newIbParent && newIbParent !== 'none' ? newIbParent.trim() : null,
       };
-      if (newIbParent && newIbParent !== 'none') {
-        payload.parent_ib_id = newIbParent.trim();
-      }
 
       const res = await fetch(`${supabaseUrl}/rest/v1/users?id=eq.${selectedAssignUserId}`, {
         method: 'PATCH',
@@ -1615,7 +1623,7 @@ const OperatorHub = () => {
                       <SelectTrigger><SelectValue placeholder="Select parent IB" /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="none">Master IB</SelectItem>
-                        {ownerOptions.map(o => <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>)}
+                        {parentIbOptions.map(o => <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </div>
@@ -1631,9 +1639,16 @@ const OperatorHub = () => {
                     {ownerOptions
                       .filter(o => o.name.toLowerCase().includes(assignIbSearch.toLowerCase()))
                       .map(o => (
-                        <div key={o.id} className={`flex items-center justify-between p-2 hover:bg-black/10 cursor-pointer ${selectedAssignUserId===o.id?'bg-black/5':''}`} onClick={() => setSelectedAssignUserId(o.id)}>
+                        <div
+                          key={o.id}
+                          className={`flex items-center justify-between p-2 hover:bg-black/10 cursor-pointer ${selectedAssignUserId===o.id?'bg-black/5':''}`}
+                          onClick={() => {
+                            setSelectedAssignUserId(o.id);
+                            setAssignIbSearch(o.name);
+                          }}
+                        >
                           <span>{o.name}</span>
-                          <span className="text-xs text-muted-foreground">{o.role || 'ib'}</span>
+                          <span className="text-xs text-muted-foreground">{o.ibType || o.role || 'user'}</span>
                         </div>
                       ))}
                   </div>
@@ -1643,7 +1658,7 @@ const OperatorHub = () => {
                       <SelectTrigger><SelectValue placeholder="Select parent IB" /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="none">Master IB</SelectItem>
-                        {ownerOptions.map(o => <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>)}
+                        {parentIbOptions.map(o => <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </div>
