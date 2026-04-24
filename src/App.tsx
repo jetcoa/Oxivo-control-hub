@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { Component, Suspense, lazy, useEffect, useState } from "react";
+import type { ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Moon, Sun } from "lucide-react";
@@ -6,10 +7,56 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import AgentCenterOld from "./pages/AgentCenterOld.tsx";
-import OperatorHub from "./pages/OperatorHub.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
+const OperatorHubLazy = lazy(() =>
+  import("./pages/OperatorHub.tsx").catch((err) => ({
+    default: () => (
+      <div className="m-6 rounded-md border border-red-500/40 bg-red-500/10 p-4 text-sm">
+        <div className="font-semibold text-red-300">Operator Hub failed to load</div>
+        <div className="mt-2 break-all text-red-200">{String(err?.message || err)}</div>
+      </div>
+    ),
+  }))
+);
+
 const queryClient = new QueryClient();
+
+class RouteErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { error: null };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { error };
+  }
+
+  componentDidCatch(error: Error) {
+    console.error("RouteErrorBoundary", error);
+  }
+
+  render(): ReactNode {
+    if (this.state.error) {
+      return (
+        <div className="m-6 rounded-md border border-red-500/40 bg-red-500/10 p-4 text-sm">
+          <div className="font-semibold text-red-300">Route crashed</div>
+          <div className="mt-2 break-all text-red-200">{this.state.error.message}</div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+const OperatorHubRoute = () => (
+  // @ts-ignore
+  <RouteErrorBoundary>
+    <Suspense fallback={<div className="p-6 text-sm text-muted-foreground">Loading Operator Hub…</div>}>
+      <OperatorHubLazy />
+    </Suspense>
+  </RouteErrorBoundary>
+);
 
 const ThemeToggle = () => {
   const [dark, setDark] = useState(false);
@@ -75,8 +122,8 @@ const App = () => {
         ) : (
           <BrowserRouter>
             <Routes>
-              <Route path="/" element={<OperatorHub />} />
-              <Route path="/operator-hub" element={<OperatorHub />} />
+              <Route path="/" element={<OperatorHubRoute />} />
+              <Route path="/operator-hub" element={<OperatorHubRoute />} />
               <Route path="/legacy" element={<AgentCenterOld />} />
               <Route path="/agent-center" element={<AgentCenterOld />} />
               <Route path="/agent-center-old" element={<AgentCenterOld />} />
