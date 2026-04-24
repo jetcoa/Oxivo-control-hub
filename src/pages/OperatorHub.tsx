@@ -620,6 +620,15 @@ const OperatorHub = () => {
       const name = newIbName.trim();
       if (!name) throw new Error('Name is required');
 
+      const existing = ownerOptions.find((o) => o.name.trim().toLowerCase() === name.toLowerCase());
+      if (existing) {
+        setAssignExistingIb(true);
+        setSelectedAssignUserId(existing.id);
+        setAssignIbSearch(existing.name);
+        setAddIbStatus(`"${existing.name}" already exists. Use Assign Existing to set/update Parent IB.`);
+        return;
+      }
+
       const uuid = crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
         const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
         return v.toString(16);
@@ -629,8 +638,6 @@ const OperatorHub = () => {
         id: uuid,
         name,
         role: 'ib',
-        ib_type: newIbParent && newIbParent !== 'none' ? 'sub-ib' : 'master-ib',
-        parent_ib_id: newIbParent && newIbParent !== 'none' ? newIbParent.trim() : null,
       };
 
       const res = await fetch(`${supabaseUrl}/rest/v1/users`, {
@@ -1640,8 +1647,8 @@ const OperatorHub = () => {
               <div className="text-lg font-semibold">Add Sub-IB / Operator</div>
 
               <div className="flex gap-2">
-                <Button size="sm" variant={!assignExistingIb ? 'default' : 'outline'} className="flex-1" onClick={() => { setAssignExistingIb(false); setSelectedAssignUserId(''); setAddIbStatus(''); setParentIbSearch(''); }}>Create New</Button>
-                <Button size="sm" variant={assignExistingIb ? 'default' : 'outline'} className="flex-1" onClick={() => { setAssignExistingIb(true); setSelectedAssignUserId(''); setAssignIbSearch(''); setAddIbStatus(''); setParentIbSearch(''); }}>Assign Existing</Button>
+                <Button size="sm" variant={!assignExistingIb ? 'default' : 'outline'} className="flex-1" onClick={() => { setAssignExistingIb(false); setSelectedAssignUserId(''); setAddIbStatus(''); setParentIbSearch(''); setNewIbParent(''); }}>Create New</Button>
+                <Button size="sm" variant={assignExistingIb ? 'default' : 'outline'} className="flex-1" onClick={() => { setAssignExistingIb(true); setSelectedAssignUserId(''); setAssignIbSearch(''); setAddIbStatus(''); setParentIbSearch(''); setNewIbParent(''); }}>Assign Existing</Button>
               </div>
 
               {!assignExistingIb ? (
@@ -1659,27 +1666,7 @@ const OperatorHub = () => {
                       </div>
                     )}
                   </div>
-                  <div className="space-y-2">
-                    <Label>Parent IB (optional)</Label>
-                    <Input placeholder="Type to search parent IB..." value={parentIbSearch} onChange={(e) => setParentIbSearch(e.target.value)} />
-                    <div className="max-h-40 overflow-y-auto rounded-md border border-white/20">
-                      {parentIbSearch.trim().length === 0 ? (
-                        <div className="p-2 text-xs text-muted-foreground">Start typing to search parent IB...</div>
-                      ) : matchedParentIbOptions.length === 0 ? (
-                        <div className="p-2 text-xs text-muted-foreground">No parent IB found for "{parentIbSearch}"</div>
-                      ) : (
-                        matchedParentIbOptions.map((o) => (
-                          <div key={o.id} className={`flex cursor-pointer items-center justify-between p-2 hover:bg-black/10 ${newIbParent===o.id?'bg-black/5':''}`} onClick={() => { setNewIbParent(o.id); setParentIbSearch(o.name); }}>
-                            <span>{o.name}</span>
-                            <span className="text-xs text-muted-foreground">{o.ibType || 'ib'}</span>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                    <Button size="sm" variant="outline" className="w-full" onClick={() => { setNewIbParent('none'); setParentIbSearch(''); }}>
-                      Set as Master IB (no parent)
-                    </Button>
-                  </div>
+                  <div className="text-xs text-muted-foreground">Create New only creates an IB record. Set Parent IB in Assign Existing.</div>
                   <Button size="sm" className="w-full" disabled={!newIbName.trim()} onClick={() => { void createSubIb(); }}>Create IB</Button>
                 </>
               ) : (
