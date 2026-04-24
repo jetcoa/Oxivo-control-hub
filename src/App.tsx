@@ -41,25 +41,53 @@ const ThemeToggle = () => {
   );
 };
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <ThemeToggle />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<OperatorHub />} />
-          <Route path="/operator-hub" element={<OperatorHub />} />
-          <Route path="/legacy" element={<AgentCenterOld />} />
-          <Route path="/agent-center" element={<AgentCenterOld />} />
-          <Route path="/agent-center-old" element={<AgentCenterOld />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+const App = () => {
+  const [fatal, setFatal] = useState<string | null>(null);
+
+  useEffect(() => {
+    const onError = (event: ErrorEvent) => {
+      setFatal(event.message || "Unknown runtime error");
+    };
+    const onUnhandled = (event: PromiseRejectionEvent) => {
+      const reason = typeof event.reason === "string" ? event.reason : event.reason?.message || "Unhandled promise rejection";
+      setFatal(reason);
+    };
+
+    window.addEventListener("error", onError);
+    window.addEventListener("unhandledrejection", onUnhandled);
+    return () => {
+      window.removeEventListener("error", onError);
+      window.removeEventListener("unhandledrejection", onUnhandled);
+    };
+  }, []);
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <ThemeToggle />
+        {fatal ? (
+          <div className="m-6 rounded-md border border-red-500/40 bg-red-500/10 p-4 text-sm">
+            <div className="font-semibold text-red-300">Runtime error detected</div>
+            <div className="mt-2 break-all text-red-200">{fatal}</div>
+          </div>
+        ) : (
+          <BrowserRouter>
+            <Routes>
+              <Route path="/" element={<OperatorHub />} />
+              <Route path="/operator-hub" element={<OperatorHub />} />
+              <Route path="/legacy" element={<AgentCenterOld />} />
+              <Route path="/agent-center" element={<AgentCenterOld />} />
+              <Route path="/agent-center-old" element={<AgentCenterOld />} />
+              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        )}
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+};
 
 export default App;
