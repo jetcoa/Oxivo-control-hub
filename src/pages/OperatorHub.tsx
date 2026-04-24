@@ -394,6 +394,7 @@ const OperatorHub = () => {
   const [showAddIbModal, setShowAddIbModal] = useState(false);
   const [newIbName, setNewIbName] = useState('');
   const [newIbParent, setNewIbParent] = useState('');
+  const [parentIbSearch, setParentIbSearch] = useState('');
   const [addIbStatus, setAddIbStatus] = useState('');
   const [assignExistingIb, setAssignExistingIb] = useState(false);
   const [assignIbSearch, setAssignIbSearch] = useState('');
@@ -402,6 +403,24 @@ const OperatorHub = () => {
   const parentIbOptions = useMemo(
     () => ownerOptions.filter((o) => String(o.role || '').toLowerCase() === 'ib'),
     [ownerOptions]
+  );
+
+  const matchedNameOptions = useMemo(
+    () => {
+      const q = newIbName.trim().toLowerCase();
+      if (!q) return [] as OwnerOption[];
+      return ownerOptions.filter((o) => o.name.toLowerCase().includes(q)).slice(0, 8);
+    },
+    [newIbName, ownerOptions]
+  );
+
+  const matchedParentIbOptions = useMemo(
+    () => {
+      const q = parentIbSearch.trim().toLowerCase();
+      if (!q) return [] as OwnerOption[];
+      return parentIbOptions.filter((o) => o.name.toLowerCase().includes(q)).slice(0, 12);
+    },
+    [parentIbSearch, parentIbOptions]
   );
 
   const postWebhook = async (url: string | undefined, payload: Record<string, unknown>) => {
@@ -625,6 +644,7 @@ const OperatorHub = () => {
 
       setNewIbName('');
       setNewIbParent('');
+      setParentIbSearch('');
       setShowAddIbModal(false);
       setAddIbStatus('IB created successfully.');
       void refreshOwnerList();
@@ -663,6 +683,7 @@ const OperatorHub = () => {
 
       setSelectedAssignUserId('');
       setNewIbParent('');
+      setParentIbSearch('');
       setShowAddIbModal(false);
       setAddIbStatus('IB assigned successfully.');
       void refreshOwnerList();
@@ -1613,8 +1634,8 @@ const OperatorHub = () => {
               <div className="text-lg font-semibold">Add Sub-IB / Operator</div>
 
               <div className="flex gap-2">
-                <Button size="sm" variant={!assignExistingIb ? 'default' : 'outline'} className="flex-1" onClick={() => { setAssignExistingIb(false); setSelectedAssignUserId(''); setAddIbStatus(''); }}>Create New</Button>
-                <Button size="sm" variant={assignExistingIb ? 'default' : 'outline'} className="flex-1" onClick={() => { setAssignExistingIb(true); setSelectedAssignUserId(''); setAssignIbSearch(''); setAddIbStatus(''); }}>Assign Existing</Button>
+                <Button size="sm" variant={!assignExistingIb ? 'default' : 'outline'} className="flex-1" onClick={() => { setAssignExistingIb(false); setSelectedAssignUserId(''); setAddIbStatus(''); setParentIbSearch(''); }}>Create New</Button>
+                <Button size="sm" variant={assignExistingIb ? 'default' : 'outline'} className="flex-1" onClick={() => { setAssignExistingIb(true); setSelectedAssignUserId(''); setAssignIbSearch(''); setAddIbStatus(''); setParentIbSearch(''); }}>Assign Existing</Button>
               </div>
 
               {!assignExistingIb ? (
@@ -1622,16 +1643,36 @@ const OperatorHub = () => {
                   <div className="space-y-2">
                     <Label>Name</Label>
                     <Input placeholder="IB / Operator name" value={newIbName} onChange={(e) => setNewIbName(e.target.value)} />
+                    {newIbName.trim().length > 0 && matchedNameOptions.length > 0 && (
+                      <div className="max-h-32 overflow-y-auto rounded-md border border-white/20">
+                        {matchedNameOptions.map((o) => (
+                          <div key={o.id} className="cursor-pointer p-2 text-xs hover:bg-black/10" onClick={() => setNewIbName(o.name)}>
+                            {o.name}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <Label>Parent IB (optional)</Label>
-                    <Select value={newIbParent} onValueChange={setNewIbParent}>
-                      <SelectTrigger><SelectValue placeholder="Select parent IB" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">Master IB</SelectItem>
-                        {parentIbOptions.map(o => <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
+                    <Input placeholder="Type to search parent IB..." value={parentIbSearch} onChange={(e) => setParentIbSearch(e.target.value)} />
+                    <div className="max-h-40 overflow-y-auto rounded-md border border-white/20">
+                      {parentIbSearch.trim().length === 0 ? (
+                        <div className="p-2 text-xs text-muted-foreground">Start typing to search parent IB...</div>
+                      ) : matchedParentIbOptions.length === 0 ? (
+                        <div className="p-2 text-xs text-muted-foreground">No parent IB found for "{parentIbSearch}"</div>
+                      ) : (
+                        matchedParentIbOptions.map((o) => (
+                          <div key={o.id} className={`flex cursor-pointer items-center justify-between p-2 hover:bg-black/10 ${newIbParent===o.id?'bg-black/5':''}`} onClick={() => { setNewIbParent(o.id); setParentIbSearch(o.name); }}>
+                            <span>{o.name}</span>
+                            <span className="text-xs text-muted-foreground">{o.ibType || 'ib'}</span>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                    <Button size="sm" variant="outline" className="w-full" onClick={() => { setNewIbParent('none'); setParentIbSearch(''); }}>
+                      Set as Master IB (no parent)
+                    </Button>
                   </div>
                   <Button size="sm" className="w-full" disabled={!newIbName.trim()} onClick={() => { void createSubIb(); }}>Create IB</Button>
                 </>
@@ -1666,13 +1707,24 @@ const OperatorHub = () => {
                   </div>
                   <div className="space-y-2">
                     <Label>Parent IB (optional)</Label>
-                    <Select value={newIbParent} onValueChange={setNewIbParent}>
-                      <SelectTrigger><SelectValue placeholder="Select parent IB" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">Master IB</SelectItem>
-                        {parentIbOptions.map(o => <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
+                    <Input placeholder="Type to search parent IB..." value={parentIbSearch} onChange={(e) => setParentIbSearch(e.target.value)} />
+                    <div className="max-h-40 overflow-y-auto rounded-md border border-white/20">
+                      {parentIbSearch.trim().length === 0 ? (
+                        <div className="p-2 text-xs text-muted-foreground">Start typing to search parent IB...</div>
+                      ) : matchedParentIbOptions.length === 0 ? (
+                        <div className="p-2 text-xs text-muted-foreground">No parent IB found for "{parentIbSearch}"</div>
+                      ) : (
+                        matchedParentIbOptions.map((o) => (
+                          <div key={o.id} className={`flex cursor-pointer items-center justify-between p-2 hover:bg-black/10 ${newIbParent===o.id?'bg-black/5':''}`} onClick={() => { setNewIbParent(o.id); setParentIbSearch(o.name); }}>
+                            <span>{o.name}</span>
+                            <span className="text-xs text-muted-foreground">{o.ibType || 'ib'}</span>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                    <Button size="sm" variant="outline" className="w-full" onClick={() => { setNewIbParent('none'); setParentIbSearch(''); }}>
+                      Set as Master IB (no parent)
+                    </Button>
                   </div>
                   <Button size="sm" className="w-full" disabled={!selectedAssignUserId} onClick={() => { void handleAssignExistingIb(); }}>Assign as IB</Button>
                 </>
