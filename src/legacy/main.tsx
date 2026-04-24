@@ -1,5 +1,5 @@
 import { createRoot } from "react-dom/client";
-import OperatorHub from "@/pages/OperatorHub";
+import App from "@/App";
 import "../index.css";
 
-createRoot(document.getElementById("root")!).render(<OperatorHub />);
+createRoot(document.getElementById("root")!).render(<App />);
