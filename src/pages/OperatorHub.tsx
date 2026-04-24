@@ -438,7 +438,6 @@ const OperatorHub = () => {
     if (!lead) return '';
     const stage = lead.stage.toLowerCase();
     const overdue = lead.followUpDue.includes('Overdue');
-    const hasDue = lead.followUpDue !== 'TBD';
     const isUnassigned = lead.owner === 'unassigned';
 
     if (isUnassigned) return 'Assign an owner';
@@ -450,8 +449,17 @@ const OperatorHub = () => {
     return 'Update stage or reassign';
   };
 
+  const refreshOwnerList = async () => {
+    try {
+      const owners = await fetchOwnerOptions();
+      setOwnerOptions(owners);
+    } catch {
+      setOwnerOptions([]);
+    }
+  };
+
   useEffect(() => {
-    refreshOwnerList();
+    void refreshOwnerList();
   }, []);
 
   useEffect(() => {
