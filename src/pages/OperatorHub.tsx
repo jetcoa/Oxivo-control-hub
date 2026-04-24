@@ -815,6 +815,7 @@ const OperatorHub = () => {
     const groups = new Map<string, {
       ownerId: string;
       ownerName: string;
+      subIb: number;
       assigned: number;
       qualified: number;
       funded: number;
@@ -824,6 +825,13 @@ const OperatorHub = () => {
       stuck: number;
       sources: Record<string, number>;
     }>();
+
+    const subIbByParent: Record<string, number> = {};
+    for (const user of ownerOptions) {
+      if (String(user.role || '').toLowerCase() !== 'ib') continue;
+      if (!user.parentId) continue;
+      subIbByParent[user.parentId] = (subIbByParent[user.parentId] || 0) + 1;
+    }
 
     for (const r of masterRows) {
       const ownerId = r.assigned_to || 'unassigned';
@@ -836,6 +844,7 @@ const OperatorHub = () => {
         groups.set(ownerId, {
           ownerId,
           ownerName,
+          subIb: subIbByParent[ownerId] || 0,
           assigned: 0,
           qualified: 0,
           funded: 0,
@@ -1526,6 +1535,7 @@ const OperatorHub = () => {
               <thead className="sticky top-0 bg-black/10">
                 <tr className="text-left">
                   <th className="p-2">Owner / IB</th>
+                  <th className="p-2">Sub-IB</th>
                   <th className="p-2">Assigned</th>
                   <th className="p-2">Qualified</th>
                   <th className="p-2">Funded</th>
@@ -1540,6 +1550,7 @@ const OperatorHub = () => {
                 {ownerBookRows.map((o) => (
                   <tr key={o.ownerId} className="border-t border-white/10">
                     <td className="p-2 font-medium">{o.ownerName}</td>
+                    <td className="p-2">{o.subIb}</td>
                     <td className="p-2">{o.assigned}</td>
                     <td className="p-2">{o.qualified}</td>
                     <td className="p-2">{o.funded}</td>
