@@ -408,10 +408,17 @@ const OperatorHub = () => {
   const matchedNameOptions = useMemo(
     () => {
       const q = newIbName.trim().toLowerCase();
-      if (!q) return [] as OwnerOption[];
-      return ownerOptions.filter((o) => o.name.toLowerCase().includes(q)).slice(0, 8);
+      if (!q) return [] as string[];
+
+      const ownerNames = ownerOptions.map((o) => o.name);
+      const leadNames = masterRows.map((r) => r.full_name).filter(Boolean);
+      const merged = Array.from(new Set([...ownerNames, ...leadNames]));
+
+      return merged
+        .filter((name) => String(name).toLowerCase().includes(q))
+        .slice(0, 10) as string[];
     },
-    [newIbName, ownerOptions]
+    [newIbName, ownerOptions, masterRows]
   );
 
   const matchedParentIbOptions = useMemo(
@@ -1645,9 +1652,9 @@ const OperatorHub = () => {
                     <Input placeholder="IB / Operator name" value={newIbName} onChange={(e) => setNewIbName(e.target.value)} />
                     {newIbName.trim().length > 0 && matchedNameOptions.length > 0 && (
                       <div className="max-h-32 overflow-y-auto rounded-md border border-white/20">
-                        {matchedNameOptions.map((o) => (
-                          <div key={o.id} className="cursor-pointer p-2 text-xs hover:bg-black/10" onClick={() => setNewIbName(o.name)}>
-                            {o.name}
+                        {matchedNameOptions.map((name) => (
+                          <div key={name} className="cursor-pointer p-2 text-xs hover:bg-black/10" onClick={() => setNewIbName(name)}>
+                            {name}
                           </div>
                         ))}
                       </div>
