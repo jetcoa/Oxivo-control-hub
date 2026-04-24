@@ -410,12 +410,23 @@ const OperatorHub = () => {
       const q = newIbName.trim().toLowerCase();
       if (!q) return [] as string[];
 
-      const ownerNames = ownerOptions.map((o) => o.name);
+      const existingIbNames = new Set(
+        ownerOptions
+          .filter((o) => String(o.role || '').toLowerCase() === 'ib')
+          .map((o) => o.name.trim().toLowerCase())
+      );
+
+      const nonIbOwnerNames = ownerOptions
+        .filter((o) => String(o.role || '').toLowerCase() !== 'ib')
+        .map((o) => o.name);
       const leadNames = masterRows.map((r) => r.full_name).filter(Boolean);
-      const merged = Array.from(new Set([...ownerNames, ...leadNames]));
+      const merged = Array.from(new Set([...nonIbOwnerNames, ...leadNames]));
 
       return merged
-        .filter((name) => String(name).toLowerCase().includes(q))
+        .filter((name) => {
+          const n = String(name).trim().toLowerCase();
+          return n.includes(q) && !existingIbNames.has(n);
+        })
         .slice(0, 10) as string[];
     },
     [newIbName, ownerOptions, masterRows]
@@ -429,6 +440,12 @@ const OperatorHub = () => {
     },
     [parentIbSearch, parentIbOptions]
   );
+
+  const existingIbNameMatch = useMemo(() => {
+    const n = newIbName.trim().toLowerCase();
+    if (!n) return null as OwnerOption | null;
+    return ownerOptions.find((o) => String(o.role || '').toLowerCase() === 'ib' && o.name.trim().toLowerCase() === n) || null;
+  }, [newIbName, ownerOptions]);
 
   const postWebhook = async (url: string | undefined, payload: Record<string, unknown>) => {
     if (!url) throw new Error("Missing webhook URL for this action.");
@@ -1656,6 +1673,9 @@ const OperatorHub = () => {
                   <div className="space-y-2">
                     <Label>Name</Label>
                     <Input placeholder="IB / Operator name" value={newIbName} onChange={(e) => setNewIbName(e.target.value)} />
+                    {existingIbNameMatch && (
+                      <div className="text-xs text-amber-300">"{existingIbNameMatch.name}" is already an IB. Use Assign Existing.</div>
+                    )}
                     {newIbName.trim().length > 0 && matchedNameOptions.length > 0 && (
                       <div className="max-h-32 overflow-y-auto rounded-md border border-white/20">
                         {matchedNameOptions.map((name) => (
@@ -1667,7 +1687,7 @@ const OperatorHub = () => {
                     )}
                   </div>
                   <div className="text-xs text-muted-foreground">Create New only creates an IB record. Set Parent IB in Assign Existing.</div>
-                  <Button size="sm" className="w-full" disabled={!newIbName.trim()} onClick={() => { void createSubIb(); }}>Create IB</Button>
+                  <Button size="sm" className="w-full" disabled={!newIbName.trim() || !!existingIbNameMatch} onClick={() => { void createSubIb(); }}>Create IB</Button>
                 </>
               ) : (
                 <>
