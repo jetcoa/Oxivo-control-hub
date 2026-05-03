@@ -213,7 +213,7 @@ async function fetchMomentumStats(): Promise<MomentumStats> {
   const windowStartIso = dubaiDayStart.toISOString();
 
   const [leadUpdatesRes, followupsRes, overdueFixedRes, reachOutsRes] = await Promise.all([
-    fetch(`${supabaseUrl}/rest/v1/leads?select=id&updated_at=gte.${encodeURIComponent(windowStartIso)}`, {
+    fetch(`${supabaseUrl}/rest/v1/leads?select=id&updated_at=gte.${encodeURIComponent(windowStartIso)}&current_stage=not.eq.new_lead`, {
       headers: { apikey: supabaseAnonKey, Authorization: `Bearer ${supabaseAnonKey}` },
     }),
     fetch(`${supabaseUrl}/rest/v1/follow_up_tasks?select=id&created_at=gte.${encodeURIComponent(windowStartIso)}`, {
