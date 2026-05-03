@@ -55,6 +55,7 @@ const LIFECYCLE_STAGES = [
   ['kyc_started', 'KYC Started'],
   ['kyc_approved', 'KYC Approved'],
   ['funded', 'Funded'],
+  ['for_transfer', 'For Transfer'],
   ['demo_trading', 'Demo Trading'],
   ['trading', 'Trading'],
   ['inactive', 'Inactive'],
@@ -68,7 +69,8 @@ const STAGE_TRANSITIONS: Record<string, string[]> = {
   qualified: ['kyc_started', 'lost'],
   kyc_started: ['kyc_approved', 'inactive', 'lost'],
   kyc_approved: ['funded', 'lost'],
-  funded: ['demo_trading', 'inactive'],
+  funded: ['for_transfer', 'demo_trading', 'inactive'],
+  for_transfer: ['demo_trading', 'trading', 'inactive'],
   demo_trading: ['trading', 'inactive'],
   trading: ['inactive', 'reactivation'],
   inactive: ['reactivation', 'lost'],
@@ -1313,7 +1315,7 @@ const OperatorHub = () => {
                     </SelectTrigger>
                     <SelectContent>
                       {LIFECYCLE_STAGES
-                        .filter(([value]) => allowedNextStages.includes(value))
+                        .filter(([value]) => value !== selectedStage)
                         .map(([value, label]) => (
                           <SelectItem key={value} value={value}>{label}</SelectItem>
                         ))}
@@ -1527,7 +1529,8 @@ const OperatorHub = () => {
                 {filteredMasterRows.map((r)=>{
                   const overdue=!!r.followup_due_at && new Date(r.followup_due_at).getTime()<Date.now();
                   const isLost = String(r.current_stage || '').toLowerCase() === 'lost';
-                  const allowedNext = getAllowedForwardStages(String(r.current_stage || '').toLowerCase());
+                  const currentStage = String(r.current_stage || '').toLowerCase();
+                  const allowedNext = LIFECYCLE_STAGES.map(([v]) => v).filter((v) => v !== currentStage);
                   const isEditing = editingStageId === r.id;
                   const inAnyQueue = queueLeadIds.has(r.id);
                   return <tr key={r.id} className="border-t border-white/10">
