@@ -56,7 +56,7 @@ const TaskBoard = () => {
             <h3 className="text-sm font-semibold">{col.label}</h3>
             <Badge variant="secondary" className="text-[10px]">{tasks.filter((t) => t.column === col.key).length}</Badge>
           </div>
-          <div className="space-y-2.5">
+          <div className={col.key === 'done' ? "max-h-[72vh] space-y-2.5 overflow-y-auto pr-1" : "space-y-2.5"}>
             {tasks.filter((t) => t.column === col.key).map((t) => {
               const agent = agents.find((a) => a.id === t.agentId) ?? {
                 id: t.agentId,
