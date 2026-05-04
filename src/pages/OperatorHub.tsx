@@ -1169,7 +1169,7 @@ const OperatorHub = () => {
                   </Button>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-4 flex-1 overflow-y-auto">
+              <CardContent className="space-y-4 flex-1 overflow-hidden">
                 <div className="flex flex-wrap gap-2">
                   {queueViews.map((view) => {
                     const isActive = activeView === view;
@@ -1272,7 +1272,7 @@ const OperatorHub = () => {
               <CardHeader>
                 <CardTitle>Action Panel</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4 text-sm flex-1 overflow-y-auto">
+              <CardContent className="glass-scroll space-y-4 text-sm flex-1 overflow-y-auto pr-1">
                 {!selectedLead && <div className="text-muted-foreground">Select a lead to unlock actions.</div>}
                 {actionMessage && <div className="rounded-md border p-2 text-xs text-muted-foreground">{actionMessage}</div>}
 
